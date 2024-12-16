@@ -909,23 +909,23 @@ for (i in 2:nrow(df_FEV1trajectory)) {
 }
 
 # Calculate the total for the Belumosudil.arm states across all categories
-df_FEV1trajectory$Belumosudil.arm.Total <- rowSums(
+df_FEV1trajectory$Belumosudil.arm.Total <- round(rowSums(
   cbind(
     df_FEV1trajectory$Belumosudil.arm.1L,
     df_FEV1trajectory$Belumosudil.arm.2L.BSC,
     df_FEV1trajectory$Belumosudil.arm.LTx,
     df_FEV1trajectory$Belumosudil.arm.Dead
   )
-)
+))
 
 # Calculate the total for the BSC.arm states across all categories
-df_FEV1trajectory$BSC.arm.Total <- rowSums(
+df_FEV1trajectory$BSC.arm.Total <- round(rowSums(
   cbind(
     df_FEV1trajectory$BSC.arm,
     df_FEV1trajectory$BSC.arm.LTx,
     df_FEV1trajectory$BSC.arm.Dead
   )
-)
+))
 
 
 
