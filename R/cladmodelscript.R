@@ -927,7 +927,9 @@ df_FEV1trajectory$BSC.arm.Total <- round(rowSums(
   )
 ))
 
+LYs.Belumosudil <- (sum(1-df_FEV1trajectory$Belumosudil.arm.Dead))/12
 
+LYs.BSC <- (sum(1-df_FEV1trajectory$BSC.arm.Dead))/12
 
   
   
@@ -943,4 +945,4 @@ df_FEV1trajectory$BSC.arm.Total <- round(rowSums(
   
   
   
-}
+
