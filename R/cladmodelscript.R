@@ -6,7 +6,7 @@ library(heemod)
 # -----------------------------------------------------
 # General Settings
 # -----------------------------------------------------
-time_horizon <- 50            # Time horizon for the analysis (in years)
+time_horizon <- 5           # Time horizon for the analysis (in years)
 dr_cost <- 0.035              # Discount rate for costs
 dr_outcomes <- 0.035          # Discount rate for health outcomes
 wtp_threshold <- 30000        # Willingness-to-pay threshold (in monetary units)
@@ -83,6 +83,88 @@ p_stoprule_clad4 <- 1          # Only applied for Clad4 level
 # Discontinuation Rate for Belumosudil
 # -----------------------------------------------------
 p_disc_belumosudil <- 0.0119   # Probability of discontinuing Belumosudil
+
+# -----------------------------------------------------
+# Adverse Event (AE) Probabilities
+# -----------------------------------------------------
+
+# Percentage of AEs managed in outpatient setting
+p_AE_managed.outpatient <- 1  
+
+# Probabilities of AEs for Belumosudil
+p_AE_pneumonia_belumosudil <- 0.004
+p_AE_hypertension_belumosudil <- 0.004
+p_AE_anaemia_belumosudil <- 0.002
+p_AE_thrombocytopenia_belumosudil <- 0.002
+p_AE_hyperglycaemia_belumosudil <- 0.003
+p_AE_GGT_increased_belumosudil <- 0.003
+p_AE_diarrhoea_belumosudil <- 0.000
+p_AE_AE8_belumosudil <- 0.000
+p_AE_AE9_belumosudil <- 0.000
+p_AE_AE10_belumosudil <- 0.000
+p_AE_AE11_belumosudil <- 0.000
+
+# Probabilities of AEs for Best Supportive Care (BSC)
+p_AE_pneumonia_BSC <- 0.017
+p_AE_hypertension_BSC <- 0.012
+p_AE_anaemia_BSC <- 0.014
+p_AE_thrombocytopenia_BSC <- 0.018
+p_AE_hyperglycaemia_BSC <- 0.003
+p_AE_GGT_increased_BSC <- 0.003
+p_AE_diarrhoea_BSC <- 0.002
+p_AE_AE8_BSC <- 0.000
+p_AE_AE9_BSC <- 0.000
+p_AE_AE10_BSC <- 0.000
+p_AE_AE11_BSC <- 0.000
+
+# -----------------------------------------------------
+# Unit Costs for Outpatient Management of AEs
+# -----------------------------------------------------
+c_AE_pneumonia_outpatient <- 371.768
+c_AE_hypertension_outpatient <- 447.730
+c_AE_anaemia_outpatient <- 394.642
+c_AE_thrombocytopenia_outpatient <- 442.712
+c_AE_hyperglycaemia_outpatient <- 485.777
+c_AE_GGT_increased_outpatient <- 485.777
+c_AE_diarrhoea_outpatient <- 388.046
+c_AE_AE8_outpatient <- 0
+c_AE_AE9_outpatient <- 0
+c_AE_AE10_outpatient <- 0
+c_AE_AE11_outpatient <- 0
+
+# -----------------------------------------------------
+# Unit Costs for Inpatient Management of AEs
+# -----------------------------------------------------
+c_AE_pneumonia_inpatient <- 3344.581
+c_AE_hypertension_inpatient <- 1478.830
+c_AE_anaemia_inpatient <- 1371.608
+c_AE_thrombocytopenia_inpatient <- 1972.554
+c_AE_hyperglycaemia_inpatient <- 767.985
+c_AE_GGT_increased_inpatient <- 767.985
+c_AE_diarrhoea_inpatient <- 3484.009
+c_AE_AE8_inpatient <- 0
+c_AE_AE9_inpatient <- 0
+c_AE_AE10_inpatient <- 0
+c_AE_AE11_inpatient <- 0
+
+
+
+health.utility.method <- "SGRQ based (CLAD)"
+age.adjusted.utility.values <- "Yes"
+
+# -----------------------------------------------------
+# SGRQ Scores Derived (Mapped to EQ-5D-3L)
+# -----------------------------------------------------
+SGRQ_clad0 <- 38  # Score for CLAD 0
+SGRQ_clad1 <- 38  # Score for CLAD 1
+SGRQ_clad2 <- 38  # Score for CLAD 2
+SGRQ_clad3 <- 63  # Score for CLAD 3
+SGRQ_clad4 <- 63  # Score for CLAD 4
+SGRQ_LTx <- 54.67  # Score for LTx
+
+
+
+
 
 
 ###########################################################
@@ -927,21 +1009,171 @@ df_FEV1trajectory$BSC.arm.Total <- round(rowSums(
   )
 ))
 
-LYs.Belumosudil <- (sum(1-df_FEV1trajectory$Belumosudil.arm.Dead))/12
+# -----------------------------------------------------
+# Function to Calculate Life Years (LYs) for a Given Stage or LTx
+# -----------------------------------------------------
+calculate_LYs <- function(data, treatment_cols, stage_col = NULL, stage_value = NULL) {
+  if (!is.null(stage_value)) {
+    # Convert the stage column to character type to avoid mismatches due to factors
+    data[[stage_col]] <- as.character(data[[stage_col]])
+    
+    # Check if stage_value exists in the stage_col
+    if (!stage_value %in% unique(data[[stage_col]])) {
+      stop(paste("Stage value", stage_value, "not found in", stage_col))
+    }
+    
+    # Filter data for the rows that match the stage_value
+    filtered_data <- data[data[[stage_col]] == stage_value, treatment_cols, drop = FALSE]
+    
+    # Check if filtered_data is not empty
+    if (nrow(filtered_data) > 0) {
+      # Sum the values for each row across treatment columns and divide by 12 for monthly conversion
+      summed_LYs <- apply(filtered_data, 1, sum) / 12
+    } else {
+      # If no rows match, return an empty vector and issue a warning
+      summed_LYs <- numeric(0)
+      warning(paste("No data found for stage value:", stage_value))
+    }
+  } else {
+    # If no stage_value is provided, sum the treatment columns for all rows and divide by 12
+    summed_LYs <- apply(data[treatment_cols], 1, sum) / 12
+  }
+  
+  return(summed_LYs)
+}
 
-LYs.BSC <- (sum(1-df_FEV1trajectory$BSC.arm.Dead))/12
+
+
+# -----------------------------------------------------
+# LYs Calculation for Belumosudil
+# -----------------------------------------------------
+LYs_Belumosudil_clad1 <- calculate_LYs(df_FEV1trajectory, 
+                                       c("Belumosudil.arm.1L", "Belumosudil.arm.2L.BSC"), 
+                                       "CLAD.stage.belumosudil", 1)
+LYs_Belumosudil_clad2 <- calculate_LYs(df_FEV1trajectory, 
+                                       c("Belumosudil.arm.1L", "Belumosudil.arm.2L.BSC"), 
+                                       "CLAD.stage.belumosudil", 2)
+LYs_Belumosudil_clad3 <- calculate_LYs(df_FEV1trajectory, 
+                                       c("Belumosudil.arm.1L", "Belumosudil.arm.2L.BSC"), 
+                                       "CLAD.stage.belumosudil", 3)
+LYs_Belumosudil_clad4 <- calculate_LYs(df_FEV1trajectory, 
+                                       c("Belumosudil.arm.1L", "Belumosudil.arm.2L.BSC"), 
+                                       "CLAD.stage.belumosudil", 4)
+LYs_Belumosudil_LTx <- calculate_LYs(df_FEV1trajectory, 
+                                     c("Belumosudil.arm.LTx"))
+
+# -----------------------------------------------------
+# LYs Calculation for BSC
+# -----------------------------------------------------
+LYs_BSC_clad1 <- calculate_LYs(df_FEV1trajectory, 
+                               c("BSC.arm"), 
+                               "CLAD.stage.BSC", 1)
+LYs_BSC_clad2 <- calculate_LYs(df_FEV1trajectory, 
+                               c("BSC.arm"), 
+                               "CLAD.stage.BSC", 2)
+LYs_BSC_clad3 <- calculate_LYs(df_FEV1trajectory, 
+                               c("BSC.arm"), 
+                               "CLAD.stage.BSC", 3)
+LYs_BSC_clad4 <- calculate_LYs(df_FEV1trajectory, 
+                               c("BSC.arm"), 
+                               "CLAD.stage.BSC", 4)
+LYs_BSC_LTx <- calculate_LYs(df_FEV1trajectory, 
+                             c("BSC.arm.LTx"))
 
   
   
+# -----------------------------------------------------
+# Utility Calculation Functions
+# -----------------------------------------------------
+calculate_utility_BOS <- function(SGRQ, percentage_male) {
+  # Calculate BOS utility based on SGRQ and percentage of males
+  0.9617 - 0.0013 * SGRQ - 0.0001 * SGRQ ^ 2 + 0.0231 * percentage_male
+}
+
+calculate_utility_RAS <- function(SGRQ) {
+  # Calculate RAS utility based on SGRQ
+  1.3246 - 0.01276 * SGRQ
+}
+
+# -----------------------------------------------------
+# Utility Calculation for Each CLAD Stage
+# -----------------------------------------------------
+calculate_utility_cladstage <- function(SGRQ_values,
+                                        percentage_male,
+                                        p_BOS,
+                                        p_RAS) {
+  # Calculate utilities for each CLAD stage
+  BOS_utilities <- calculate_utility_BOS(SGRQ = SGRQ_values, percentage_male = percentage_male)
+  RAS_utilities <- calculate_utility_RAS(SGRQ = SGRQ_values)
   
+  # Combine BOS and RAS utilities weighted by probabilities
+  utilities <- p_BOS * BOS_utilities + p_RAS * RAS_utilities
   
+  # Assign names for clarity
+  names(utilities) <- c("clad0", "clad1", "clad2", "clad3", "clad4", "LTx")
+  return(utilities)
+}
+
+# -----------------------------------------------------
+# Inputs and Calculations
+# -----------------------------------------------------
+# Define SGRQ values for each stage
+SGRQ_values <- c(SGRQ_clad0,
+                 SGRQ_clad1,
+                 SGRQ_clad2,
+                 SGRQ_clad3,
+                 SGRQ_clad4,
+                 SGRQ_LTx)
+
+# Calculate utilities for each stage
+utility_cladstage <- calculate_utility_cladstage(
+  SGRQ_values = SGRQ_values,
+  percentage_male = (1 - female_percentage),
+  p_BOS = p_incidence_BOS,
+  p_RAS = p_incidence_RAS
+)
+
+# Extract individual utilities
+utility_clad0 <- utility_cladstage["clad0"]
+utility_clad1 <- utility_cladstage["clad1"]
+utility_clad2 <- utility_cladstage["clad2"]
+utility_clad3 <- utility_cladstage["clad3"]
+utility_clad4 <- utility_cladstage["clad4"]
+utility_LTx <- utility_cladstage["LTx"]
+
+
+
+# Calculate QALYs for Belumosudil treatment at each stage
+QALYs_Belumosudil_clad1 <- LYs_Belumosudil_clad1 * utility_clad1  # Multiply LYs at clad1 stage by the corresponding utility
+QALYs_Belumosudil_clad2 <- LYs_Belumosudil_clad2 * utility_clad2  # Multiply LYs at clad2 stage by the corresponding utility
+QALYs_Belumosudil_clad3 <- LYs_Belumosudil_clad3 * utility_clad3  # Multiply LYs at clad3 stage by the corresponding utility
+QALYs_Belumosudil_clad4 <- LYs_Belumosudil_clad4 * utility_clad4  # Multiply LYs at clad4 stage by the corresponding utility
+QALYs_Belumosudil_LTx   <- LYs_Belumosudil_LTx * utility_LTx      # Multiply LYs at LTx stage by the corresponding utility
+
+# Calculate QALYs for BSC treatment at each stage
+QALYs_BSC_clad1 <- LYs_BSC_clad1 * utility_clad1  # Multiply LYs at clad1 stage by the corresponding utility for BSC
+QALYs_BSC_clad2 <- LYs_BSC_clad2 * utility_clad2  # Multiply LYs at clad2 stage by the corresponding utility for BSC
+QALYs_BSC_clad3 <- LYs_BSC_clad3 * utility_clad3  # Multiply LYs at clad3 stage by the corresponding utility for BSC
+QALYs_BSC_clad4 <- LYs_BSC_clad4 * utility_clad4  # Multiply LYs at clad4 stage by the corresponding utility for BSC
+QALYs_BSC_LTx   <- LYs_BSC_LTx * utility_LTx      # Multiply LYs at LTx stage by the corresponding utility for BSC
+
+
+
+
+df_outcomes_payoffs <- data.frame(
   
+  LYs.Belumosudil.undiscounted = c(LYs_Belumosudil_clad1, LYs_Belumosudil_clad2, LYs_Belumosudil_clad3,
+                                   LYs_Belumosudil_clad4)+ LYs_Belumosudil_LTx,
+  QALYs.Belumosudil.undiscounted = c(QALYs_Belumosudil_clad1, QALYs_Belumosudil_clad2, QALYs_Belumosudil_clad3,
+                                   QALYs_Belumosudil_clad4)+ QALYs_Belumosudil_LTx,
+  LYs.BSC.undiscounted = c(LYs_BSC_clad1, LYs_BSC_clad2, LYs_BSC_clad3,
+                           LYs_BSC_clad4)+ LYs_BSC_LTx,
+  QALYs.BSC.undiscounted = c(QALYs_BSC_clad1, QALYs_BSC_clad2, QALYs_BSC_clad3,
+                                     QALYs_BSC_clad4)+ QALYs_BSC_LTx
   
-  
-  
-  
-  
-  
+)
+
+ 
   
   
   
