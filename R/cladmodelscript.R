@@ -6,7 +6,7 @@ library(heemod)
 # -----------------------------------------------------
 # General Settings
 # -----------------------------------------------------
-time_horizon <- 5           # Time horizon for the analysis (in years)
+time_horizon <- 50           # Time horizon for the analysis (in years)
 dr_cost <- 0.035              # Discount rate for costs
 dr_outcomes <- 0.035          # Discount rate for health outcomes
 wtp_threshold <- 30000        # Willingness-to-pay threshold (in monetary units)
