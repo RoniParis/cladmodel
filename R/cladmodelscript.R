@@ -813,6 +813,27 @@ df_FEV1trajectory$probability_LTx_BSC <- calculate_LTx_probabilities(df_FEV1traj
 df_FEV1trajectory$probability_disc_belumosudil <- calculate_disc_probabilities(df_FEV1trajectory$CLAD.stage.belumosudil, 
                                                                                p_disc_belumosudil, list(clad1 = p_stoprule_clad1, clad2 = p_stoprule_clad2, clad3 = p_stoprule_clad3, clad4 = p_stoprule_clad4))
 
+
+
+
+disc_rank_list <- lapply(2:nrow(df_FEV1trajectory), function(i) rep(NA, nrow(df_FEV1trajectory)))
+
+names(disc_rank_list) <- paste0("disc_rank.", 2:nrow(df_FEV1trajectory))
+
+
+for (i in 1:(nrow(df_FEV1trajectory)-1)) {
+  
+  disc_rank_list[[i]][1:((i+1)-1)]  <- df_FEV1trajectory$FEV1.belumosudil[1:((i+1)-1)]
+  
+  disc_rank_list[[i]] [(i+1):nrow(df_FEV1trajectory)] <- df_FEV1trajectory$FEV1.belumosudil[(i+1)-1] - n_declineFEV1.subsequent*c(1:( nrow(df_FEV1trajectory)- i))
+  
+  disc_rank_list[[i]] [which(disc_rank_list[[i]]<0)] <- 0
+  
+} 
+
+df_disc_rank_list <- as.data.frame(disc_rank_list) %>% mutate(Cycle = df_FEV1trajectory$`df_survivaldata$Cycle`)
+
+
 ###########################################################################################
 
 # Load general mortality data from an Excel file
@@ -1009,58 +1030,126 @@ df_FEV1trajectory$BSC.arm.Total <- round(rowSums(
   )
 ))
 
+##############################################################
+##############################################################
+##############################################################
+disc_rank_list <- lapply(2:nrow(df_FEV1trajectory), function(i) rep(NA, nrow(df_FEV1trajectory)))
+
+names(disc_rank_list) <- paste0("disc_rank.", 2:nrow(df_FEV1trajectory))
+
+
+for (i in 1:(nrow(df_FEV1trajectory)-1)) {
+  
+  disc_rank_list[[i]][1:((i+1)-1)]  <- df_FEV1trajectory$FEV1.belumosudil[1:((i+1)-1)]
+  
+  disc_rank_list[[i]] [(i+1):nrow(df_FEV1trajectory)] <- df_FEV1trajectory$FEV1.belumosudil[(i+1)-1] - n_declineFEV1.subsequent*c(1:( nrow(df_FEV1trajectory)- i))
+  
+  disc_rank_list[[i]] [which(disc_rank_list[[i]]<0)] <- 0
+  
+} 
+
+df_disc_rank_list <- as.data.frame(disc_rank_list) %>% mutate(Cycle = df_FEV1trajectory$`df_survivaldata$Cycle`)
+
+
+
+df_matrix <- as.matrix(df_disc_rank_list[, -which(names(df_disc_rank_list) == "Cycle")]) # Supprime Cycle
+
+cycle_index <- df_disc_rank_list$Cycle
+
+FEV1_disc <- rep(NA, nrow(df_FEV1trajectory))
+
+FEV1_disc[2:nrow(df_FEV1trajectory)] <- sapply(2:nrow(df_FEV1trajectory), function(i) {
+  data_subset <- df_matrix[cycle_index == (i - 1), 1:(i - 1), drop = FALSE]
+  if (nrow(data_subset) > 0) {
+    mean(data_subset)
+  } else {
+    NA
+  }
+})
+
+FEV1_disc[1] <- df_FEV1trajectory$FEV1.belumosudil[1]
+FEV1.disc.change <- calculate_FEV1_changes(FEV1_disc, n_baselineFEV1.clad0)
+FEV1.disc.CLAD.stage <- calculate_CLAD_stages(FEV1.disc.change)
+
+df_FEV1trajectory$FEV1.disc.CLAD.stage <- FEV1.disc.CLAD.stage
+
+##############################################################
+##############################################################
+##############################################################
+
+
 # -----------------------------------------------------
 # Function to Calculate Life Years (LYs) for a Given Stage or LTx
 # -----------------------------------------------------
 calculate_LYs <- function(data, treatment_cols, stage_col = NULL, stage_value = NULL) {
   if (!is.null(stage_value)) {
-    # Convert the stage column to character type to avoid mismatches due to factors
-    data[[stage_col]] <- as.character(data[[stage_col]])
-    
-    # Check if stage_value exists in the stage_col
-    if (!stage_value %in% unique(data[[stage_col]])) {
-      stop(paste("Stage value", stage_value, "not found in", stage_col))
+    # Si stage_col est une chaîne unique, répéter cette chaîne pour chaque colonne de traitement
+    if (length(stage_col) == 1) {
+      stage_col <- rep(stage_col, length(treatment_cols))
     }
     
-    # Filter data for the rows that match the stage_value
-    filtered_data <- data[data[[stage_col]] == stage_value, treatment_cols, drop = FALSE]
-    
-    # Check if filtered_data is not empty
-    if (nrow(filtered_data) > 0) {
-      # Sum the values for each row across treatment columns and divide by 12 for monthly conversion
-      summed_LYs <- apply(filtered_data, 1, sum) / 12
-    } else {
-      # If no rows match, return an empty vector and issue a warning
-      summed_LYs <- numeric(0)
-      warning(paste("No data found for stage value:", stage_value))
+    # Vérifier que stage_col a la même longueur que treatment_cols
+    if (length(stage_col) != length(treatment_cols)) {
+      stop("stage_col must be either a single column name or a vector of the same length as treatment_cols.")
     }
+    
+    # Convertir les colonnes de stage en caractères
+    for (col in stage_col) {
+      data[[col]] <- as.character(data[[col]])
+    }
+    
+    # Initialiser une matrice pour stocker les valeurs filtrées
+    filtered_data <- matrix(0, nrow = nrow(data), ncol = length(treatment_cols))
+    colnames(filtered_data) <- treatment_cols
+    
+    # Filtrer les données pour chaque colonne de traitement
+    for (i in seq_along(treatment_cols)) {
+      current_stage_col <- stage_col[i]
+      current_treatment_col <- treatment_cols[i]
+      
+      # Vérifier si stage_value existe dans la colonne de stage
+      if (!stage_value %in% unique(data[[current_stage_col]])) {
+        stop(paste("Stage value", stage_value, "not found in", current_stage_col))
+      }
+      
+      # Ajouter les données correspondantes à la matrice
+      filtered_data[, i] <- ifelse(data[[current_stage_col]] == stage_value, 
+                                   data[[current_treatment_col]], 
+                                   0)
+    }
+    
+    # Calculer la somme par ligne et diviser par 12
+    summed_LYs <- rowSums(filtered_data) / 12
   } else {
-    # If no stage_value is provided, sum the treatment columns for all rows and divide by 12
+    # Si stage_value n'est pas fourni, somme des colonnes de traitement pour toutes les lignes
     summed_LYs <- apply(data[treatment_cols], 1, sum) / 12
   }
   
   return(summed_LYs)
 }
 
-
-
 # -----------------------------------------------------
 # LYs Calculation for Belumosudil
 # -----------------------------------------------------
 LYs_Belumosudil_clad1 <- calculate_LYs(df_FEV1trajectory, 
                                        c("Belumosudil.arm.1L", "Belumosudil.arm.2L.BSC"), 
-                                       "CLAD.stage.belumosudil", 1)
+                                       c("CLAD.stage.belumosudil", "CLAD.stage.BSC"),
+                                       1)
 LYs_Belumosudil_clad2 <- calculate_LYs(df_FEV1trajectory, 
                                        c("Belumosudil.arm.1L", "Belumosudil.arm.2L.BSC"), 
-                                       "CLAD.stage.belumosudil", 2)
+                                       c("CLAD.stage.belumosudil", "CLAD.stage.BSC"),
+                                       2)
 LYs_Belumosudil_clad3 <- calculate_LYs(df_FEV1trajectory, 
                                        c("Belumosudil.arm.1L", "Belumosudil.arm.2L.BSC"), 
-                                       "CLAD.stage.belumosudil", 3)
+                                       c("CLAD.stage.belumosudil", "CLAD.stage.BSC"),
+                                       3)
 LYs_Belumosudil_clad4 <- calculate_LYs(df_FEV1trajectory, 
                                        c("Belumosudil.arm.1L", "Belumosudil.arm.2L.BSC"), 
-                                       "CLAD.stage.belumosudil", 4)
+                                       c("CLAD.stage.belumosudil", "CLAD.stage.BSC"),
+                                       4)
 LYs_Belumosudil_LTx <- calculate_LYs(df_FEV1trajectory, 
                                      c("Belumosudil.arm.LTx"))
+
 
 # -----------------------------------------------------
 # LYs Calculation for BSC
@@ -1162,19 +1251,14 @@ QALYs_BSC_LTx   <- LYs_BSC_LTx * utility_LTx      # Multiply LYs at LTx stage by
 
 df_outcomes_payoffs <- data.frame(
   
-  LYs.Belumosudil.undiscounted = c(LYs_Belumosudil_clad1, LYs_Belumosudil_clad2, LYs_Belumosudil_clad3,
-                                   LYs_Belumosudil_clad4)+ LYs_Belumosudil_LTx,
-  QALYs.Belumosudil.undiscounted = c(QALYs_Belumosudil_clad1, QALYs_Belumosudil_clad2, QALYs_Belumosudil_clad3,
-                                   QALYs_Belumosudil_clad4)+ QALYs_Belumosudil_LTx,
-  LYs.BSC.undiscounted = c(LYs_BSC_clad1, LYs_BSC_clad2, LYs_BSC_clad3,
-                           LYs_BSC_clad4)+ LYs_BSC_LTx,
-  QALYs.BSC.undiscounted = c(QALYs_BSC_clad1, QALYs_BSC_clad2, QALYs_BSC_clad3,
-                                     QALYs_BSC_clad4)+ QALYs_BSC_LTx
+  LYs.Belumosudil.undiscounted = rowSums(cbind(LYs_Belumosudil_clad1, LYs_Belumosudil_clad2, LYs_Belumosudil_clad3,
+                                   LYs_Belumosudil_clad4 , LYs_Belumosudil_LTx)),
+  QALYs.Belumosudil.undiscounted = rowSums(cbind(QALYs_Belumosudil_clad1, QALYs_Belumosudil_clad2, QALYs_Belumosudil_clad3,
+                                   QALYs_Belumosudil_clad4,  QALYs_Belumosudil_LTx)),
+  LYs.BSC.undiscounted = rowSums(cbind(LYs_BSC_clad1, LYs_BSC_clad2, LYs_BSC_clad3,
+                           LYs_BSC_clad4, LYs_BSC_LTx)),
+  QALYs.BSC.undiscounted = rowSums(cbind(QALYs_BSC_clad1 , QALYs_BSC_clad2 , QALYs_BSC_clad3,
+                           QALYs_BSC_clad4 , QALYs_BSC_LTx))
   
 )
-
- 
-  
-  
-  
 
