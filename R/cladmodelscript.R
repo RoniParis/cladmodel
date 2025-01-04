@@ -6,7 +6,7 @@ library(heemod)
 # -----------------------------------------------------
 # General Settings
 # -----------------------------------------------------
-time_horizon <- 50           # Time horizon for the analysis (in years)
+time_horizon <- 50            # Time horizon for the analysis (in years)
 dr_cost <- 0.035              # Discount rate for costs
 dr_outcomes <- 0.035          # Discount rate for health outcomes
 wtp_threshold <- 30000        # Willingness-to-pay threshold (in monetary units)
@@ -92,12 +92,12 @@ p_disc_belumosudil <- 0.0119   # Probability of discontinuing Belumosudil
 p_AE_managed.outpatient <- 1  
 
 # Probabilities of AEs for Belumosudil
-p_AE_pneumonia_belumosudil <- 0.004
-p_AE_hypertension_belumosudil <- 0.004
-p_AE_anaemia_belumosudil <- 0.002
-p_AE_thrombocytopenia_belumosudil <- 0.002
-p_AE_hyperglycaemia_belumosudil <- 0.003
-p_AE_GGT_increased_belumosudil <- 0.003
+p_AE_pneumonia_belumosudil <- 0.003576921
+p_AE_hypertension_belumosudil <- 0.003576921
+p_AE_anaemia_belumosudil <- 0.002039584
+p_AE_thrombocytopenia_belumosudil <- 0.001540479
+p_AE_hyperglycaemia_belumosudil <- 0.002579999
+p_AE_GGT_increased_belumosudil <- 0.002579999
 p_AE_diarrhoea_belumosudil <- 0.000
 p_AE_AE8_belumosudil <- 0.000
 p_AE_AE9_belumosudil <- 0.000
@@ -105,17 +105,18 @@ p_AE_AE10_belumosudil <- 0.000
 p_AE_AE11_belumosudil <- 0.000
 
 # Probabilities of AEs for Best Supportive Care (BSC)
-p_AE_pneumonia_BSC <- 0.017
-p_AE_hypertension_BSC <- 0.012
-p_AE_anaemia_BSC <- 0.014
-p_AE_thrombocytopenia_BSC <- 0.018
-p_AE_hyperglycaemia_BSC <- 0.003
-p_AE_GGT_increased_BSC <- 0.003
-p_AE_diarrhoea_BSC <- 0.002
+p_AE_pneumonia_BSC <- 0.016995273
+p_AE_hypertension_BSC <- 0.012491647
+p_AE_anaemia_BSC <- 0.013619484
+p_AE_thrombocytopenia_BSC <- 0.018117967
+p_AE_hyperglycaemia_BSC <- 0.0034224
+p_AE_GGT_increased_BSC <- 0.0034224
+p_AE_diarrhoea_BSC <- 0.002282904
 p_AE_AE8_BSC <- 0.000
 p_AE_AE9_BSC <- 0.000
 p_AE_AE10_BSC <- 0.000
 p_AE_AE11_BSC <- 0.000
+
 
 # -----------------------------------------------------
 # Unit Costs for Outpatient Management of AEs
@@ -161,6 +162,35 @@ SGRQ_clad2 <- 38  # Score for CLAD 2
 SGRQ_clad3 <- 63  # Score for CLAD 3
 SGRQ_clad4 <- 63  # Score for CLAD 4
 SGRQ_LTx <- 54.67  # Score for LTx
+
+
+disutility_pneumonia <- -0.195
+disutility_hypertension <- -0.020
+disutility_anaemia <- -0.900
+disutility_thrombocytopenia <- -0.110
+disutility_hyperglycaemia <- 0
+disutility_GGT_increased <- 0
+disutility_diarrhoea <- -0.176
+disutility_AE8 <- 0
+disutility_AE9 <- 0
+disutility_AE10 <- 0
+disutility_AE11 <- 0
+
+duration_days_pneumonia <- 14.7
+duration_days_hypertension <- 21.0
+duration_days_anaemia <- 23.2
+duration_days_thrombocytopenia <- 23.2
+duration_days_hyperglycaemia <- 0
+duration_days_GGT_increased <- 0
+duration_days_diarrhoea <- 7
+duration_days_AE8 <- 0
+duration_days_AE9 <- 0
+duration_days_AE10 <- 0
+duration_days_AE11 <- 0
+
+
+
+
 
 
 
@@ -936,6 +966,7 @@ df_FEV1trajectory <- df_FEV1trajectory %>%
   mutate(
     Belumosudil.arm.1L = rep(NA, nrow(df_FEV1trajectory)),   # First-line treatment with Belumosudil
     Belumosudil.arm.2L.BSC = rep(NA, nrow(df_FEV1trajectory)), # Second-line treatment after Belumosudil, switching to BSC
+    Belumosudil.arm.newly.2L.BSC = rep(NA, nrow(df_FEV1trajectory)), # Newly on BSC, Second-line treatment after Belumosudil
     Belumosudil.arm.LTx = rep(NA, nrow(df_FEV1trajectory)),  # Transition to lung transplant (LTx) under Belumosudil treatment
     Belumosudil.arm.Dead = rep(NA, nrow(df_FEV1trajectory)), # Death under Belumosudil treatment
     BSC.arm = rep(NA, nrow(df_FEV1trajectory)),              # Best Supportive of Care (BSC) treatment
@@ -946,6 +977,7 @@ df_FEV1trajectory <- df_FEV1trajectory %>%
 # Initialize values for the first row
 df_FEV1trajectory$Belumosudil.arm.1L[1] <- 1     # Start with all patients in first-line Belumosudil treatment
 df_FEV1trajectory$Belumosudil.arm.2L.BSC[1] <- 0 # No patients initially in second-line treatment
+df_FEV1trajectory$Belumosudil.arm.newly.2L.BSC[1] <- 0 
 df_FEV1trajectory$Belumosudil.arm.LTx[1] <- 0    # No patients initially in the lung transplant group
 df_FEV1trajectory$Belumosudil.arm.Dead[1] <- 0   # No patients initially deceased
 df_FEV1trajectory$BSC.arm[1] <- 1                # All patients start in BSC for this arm
@@ -968,6 +1000,14 @@ for (i in 2:nrow(df_FEV1trajectory)) {
     df_FEV1trajectory$Belumosudil.arm.2L.BSC[i - 1] *
     (1 - df_survivaldata$p_cycle_mortality_BSC[i]) *         # Survives this cycle in BSC
     (1 - df_FEV1trajectory$probability_LTx_BSC[i])           # Does not transition to lung transplant
+  
+  
+  
+  # Transition probabilities for Belumosudil.arm.newly.2L.BSC
+  df_FEV1trajectory$Belumosudil.arm.newly.2L.BSC[i] <- df_FEV1trajectory$Belumosudil.arm.1L[i-1]*
+    df_FEV1trajectory$probability_disc_belumosudil[i] *
+    (1 - df_survivaldata$p_cycle_mortality_belumosudil[i])*
+    (1 - df_FEV1trajectory$probability_LTx_belumosudil[i])
   
   # Transition probabilities for Belumosudil.arm.LTx (transition to lung transplant)
   df_FEV1trajectory$Belumosudil.arm.LTx[i] <- df_FEV1trajectory$Belumosudil.arm.1L[i - 1] *
@@ -1248,17 +1288,97 @@ QALYs_BSC_LTx   <- LYs_BSC_LTx * utility_LTx      # Multiply LYs at LTx stage by
 
 
 
+p_AE_belumosudil <- c(
+  p_AE_pneumonia_belumosudil,
+  p_AE_hypertension_belumosudil,
+  p_AE_anaemia_belumosudil,
+  p_AE_thrombocytopenia_belumosudil,
+  p_AE_hyperglycaemia_belumosudil,
+  p_AE_GGT_increased_belumosudil,
+  p_AE_diarrhoea_belumosudil,
+  p_AE_AE8_belumosudil,
+  p_AE_AE9_belumosudil,
+  p_AE_AE10_belumosudil,
+  p_AE_AE11_belumosudil
+)
+
+p_AE_BSC <- c(
+  p_AE_pneumonia_BSC,
+  p_AE_hypertension_BSC,
+  p_AE_anaemia_BSC,
+  p_AE_thrombocytopenia_BSC,
+  p_AE_hyperglycaemia_BSC,
+  p_AE_GGT_increased_BSC,
+  p_AE_diarrhoea_BSC,
+  p_AE_AE8_BSC,
+  p_AE_AE9_BSC,
+  p_AE_AE10_BSC,
+  p_AE_AE11_BSC
+)
+
+disutility <- c(
+  disutility_pneumonia,
+  disutility_hypertension,
+  disutility_anaemia,
+  disutility_thrombocytopenia,
+  disutility_hyperglycaemia,
+  disutility_GGT_increased,
+  disutility_diarrhoea,
+  disutility_AE8,
+  disutility_AE9,
+  disutility_AE10,
+  disutility_AE11
+)
+
+duration_days <- c(
+  duration_days_pneumonia,
+  duration_days_hypertension,
+  duration_days_anaemia,
+  duration_days_thrombocytopenia,
+  duration_days_hyperglycaemia,
+  duration_days_GGT_increased,
+  duration_days_diarrhoea,
+  duration_days_AE8,
+  duration_days_AE9,
+  duration_days_AE10,
+  duration_days_AE11
+)
+
+disutility_calculation <- function(p_AE, disutility, duration) {
+  # Check that all three vectors have the same length
+  if (length(p_AE) != length(disutility) || length(p_AE) != length(duration)) {
+    stop("All  vectors must have the same length.")
+  }
+  
+  # Calculate the sum-product
+  result <- sum(p_AE * disutility * duration/df_survivaldata$Days[2])
+  return(result)
+}
+
+total_disutility_belumosudil <- disutility_calculation(p_AE_belumosudil, disutility, duration_days)
+total_disutility_BSC <- disutility_calculation(p_AE_BSC, disutility, duration_days)
+
+
+AE_disutility_belumosudil <- c(total_disutility_belumosudil*df_FEV1trajectory$Belumosudil.arm.1L[1],
+                               total_disutility_BSC*df_FEV1trajectory$Belumosudil.arm.newly.2L.BSC[2:nrow(df_FEV1trajectory)])
+
+AE_disutility_BSC <- c(total_disutility_BSC*df_FEV1trajectory$Belumosudil.arm.1L[1],
+                       0*df_FEV1trajectory$Belumosudil.arm.newly.2L.BSC[2:nrow(df_FEV1trajectory)])
+
+
+
 
 df_outcomes_payoffs <- data.frame(
   
   LYs.Belumosudil.undiscounted = rowSums(cbind(LYs_Belumosudil_clad1, LYs_Belumosudil_clad2, LYs_Belumosudil_clad3,
-                                   LYs_Belumosudil_clad4 , LYs_Belumosudil_LTx)),
+                                               LYs_Belumosudil_clad4 , LYs_Belumosudil_LTx)),
   QALYs.Belumosudil.undiscounted = rowSums(cbind(QALYs_Belumosudil_clad1, QALYs_Belumosudil_clad2, QALYs_Belumosudil_clad3,
-                                   QALYs_Belumosudil_clad4,  QALYs_Belumosudil_LTx)),
+                                                 QALYs_Belumosudil_clad4,  QALYs_Belumosudil_LTx, AE_disutility_belumosudil)),
   LYs.BSC.undiscounted = rowSums(cbind(LYs_BSC_clad1, LYs_BSC_clad2, LYs_BSC_clad3,
-                           LYs_BSC_clad4, LYs_BSC_LTx)),
+                                       LYs_BSC_clad4, LYs_BSC_LTx)),
   QALYs.BSC.undiscounted = rowSums(cbind(QALYs_BSC_clad1 , QALYs_BSC_clad2 , QALYs_BSC_clad3,
-                           QALYs_BSC_clad4 , QALYs_BSC_LTx))
+                                         QALYs_BSC_clad4 , QALYs_BSC_LTx, AE_disutility_BSC))
   
 )
+
 
