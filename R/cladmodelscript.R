@@ -163,7 +163,8 @@ SGRQ_clad3 <- 63  # Score for CLAD 3
 SGRQ_clad4 <- 63  # Score for CLAD 4
 SGRQ_LTx <- 54.67  # Score for LTx
 
-
+include.utility.adjustment <- "No"
+include_AE_disutility <- "Include"
 disutility_pneumonia <- -0.195
 disutility_hypertension <- -0.020
 disutility_anaemia <- -0.900
@@ -1209,7 +1210,46 @@ LYs_BSC_clad4 <- calculate_LYs(df_FEV1trajectory,
 LYs_BSC_LTx <- calculate_LYs(df_FEV1trajectory, 
                              c("BSC.arm.LTx"))
 
-  
+
+
+
+
+# -----------------------------------------------------
+# Utility adjustment
+# -----------------------------------------------------
+
+general_pop_utility <- read_excel("~/general_pop_utility.xlsx")
+
+general_pop_utility <- general_pop_utility %>% 
+  mutate(
+    General = female_percentage*Females + (1 - female_percentage)*Males
+  )
+
+adjustment_index <- rep(NA, nrow(general_pop_utility))
+
+adjustment_index <- general_pop_utility$General/general_pop_utility$General[mean_age+1]
+
+general_pop_utility <- general_pop_utility %>% 
+  mutate(
+    Adjustment.index = adjustment_index
+  )
+
+age.adjustment.utility.multiplier <- rep(NA, nrow(df_survivaldata))
+
+age.adjustment.utility.multiplier <- general_pop_utility$Adjustment.index[
+  match(floor(df_survivaldata$Age), general_pop_utility$Age)
+]
+
+if (include.utility.adjustment=="Yes") {
+  age.adjustment.utility.multiplier <- age.adjustment.utility.multiplier
+}
+if (include.utility.adjustment=="No") {
+  age.adjustment.utility.multiplier <- 1
+}
+df_survivaldata <- df_survivaldata %>% 
+  mutate(
+    Age.adjustment.utility.multiplier = age.adjustment.utility.multiplier
+  )
   
 # -----------------------------------------------------
 # Utility Calculation Functions
@@ -1273,18 +1313,18 @@ utility_LTx <- utility_cladstage["LTx"]
 
 
 # Calculate QALYs for Belumosudil treatment at each stage
-QALYs_Belumosudil_clad1 <- LYs_Belumosudil_clad1 * utility_clad1  # Multiply LYs at clad1 stage by the corresponding utility
-QALYs_Belumosudil_clad2 <- LYs_Belumosudil_clad2 * utility_clad2  # Multiply LYs at clad2 stage by the corresponding utility
-QALYs_Belumosudil_clad3 <- LYs_Belumosudil_clad3 * utility_clad3  # Multiply LYs at clad3 stage by the corresponding utility
-QALYs_Belumosudil_clad4 <- LYs_Belumosudil_clad4 * utility_clad4  # Multiply LYs at clad4 stage by the corresponding utility
-QALYs_Belumosudil_LTx   <- LYs_Belumosudil_LTx * utility_LTx      # Multiply LYs at LTx stage by the corresponding utility
+QALYs_Belumosudil_clad1 <- LYs_Belumosudil_clad1 * utility_clad1 * df_survivaldata$Age.adjustment.utility.multiplier # Multiply LYs at clad1 stage by the corresponding utility
+QALYs_Belumosudil_clad2 <- LYs_Belumosudil_clad2 * utility_clad2 * df_survivaldata$Age.adjustment.utility.multiplier # Multiply LYs at clad2 stage by the corresponding utility
+QALYs_Belumosudil_clad3 <- LYs_Belumosudil_clad3 * utility_clad3 * df_survivaldata$Age.adjustment.utility.multiplier # Multiply LYs at clad3 stage by the corresponding utility
+QALYs_Belumosudil_clad4 <- LYs_Belumosudil_clad4 * utility_clad4 * df_survivaldata$Age.adjustment.utility.multiplier # Multiply LYs at clad4 stage by the corresponding utility
+QALYs_Belumosudil_LTx   <- LYs_Belumosudil_LTx * utility_LTx * df_survivaldata$Age.adjustment.utility.multiplier     # Multiply LYs at LTx stage by the corresponding utility
 
 # Calculate QALYs for BSC treatment at each stage
-QALYs_BSC_clad1 <- LYs_BSC_clad1 * utility_clad1  # Multiply LYs at clad1 stage by the corresponding utility for BSC
-QALYs_BSC_clad2 <- LYs_BSC_clad2 * utility_clad2  # Multiply LYs at clad2 stage by the corresponding utility for BSC
-QALYs_BSC_clad3 <- LYs_BSC_clad3 * utility_clad3  # Multiply LYs at clad3 stage by the corresponding utility for BSC
-QALYs_BSC_clad4 <- LYs_BSC_clad4 * utility_clad4  # Multiply LYs at clad4 stage by the corresponding utility for BSC
-QALYs_BSC_LTx   <- LYs_BSC_LTx * utility_LTx      # Multiply LYs at LTx stage by the corresponding utility for BSC
+QALYs_BSC_clad1 <- LYs_BSC_clad1 * utility_clad1 * df_survivaldata$Age.adjustment.utility.multiplier  # Multiply LYs at clad1 stage by the corresponding utility for BSC
+QALYs_BSC_clad2 <- LYs_BSC_clad2 * utility_clad2 * df_survivaldata$Age.adjustment.utility.multiplier  # Multiply LYs at clad2 stage by the corresponding utility for BSC
+QALYs_BSC_clad3 <- LYs_BSC_clad3 * utility_clad3 * df_survivaldata$Age.adjustment.utility.multiplier  # Multiply LYs at clad3 stage by the corresponding utility for BSC
+QALYs_BSC_clad4 <- LYs_BSC_clad4 * utility_clad4 * df_survivaldata$Age.adjustment.utility.multiplier  # Multiply LYs at clad4 stage by the corresponding utility for BSC
+QALYs_BSC_LTx   <- LYs_BSC_LTx * utility_LTx * df_survivaldata$Age.adjustment.utility.multiplier      # Multiply LYs at LTx stage by the corresponding utility for BSC
 
 
 
@@ -1358,6 +1398,8 @@ disutility_calculation <- function(p_AE, disutility, duration) {
 total_disutility_belumosudil <- disutility_calculation(p_AE_belumosudil, disutility, duration_days)
 total_disutility_BSC <- disutility_calculation(p_AE_BSC, disutility, duration_days)
 
+if (include_AE_disutility=="Include") {
+  
 
 AE_disutility_belumosudil <- c(total_disutility_belumosudil*df_FEV1trajectory$Belumosudil.arm.1L[1],
                                total_disutility_BSC*df_FEV1trajectory$Belumosudil.arm.newly.2L.BSC[2:nrow(df_FEV1trajectory)])
@@ -1365,8 +1407,15 @@ AE_disutility_belumosudil <- c(total_disutility_belumosudil*df_FEV1trajectory$Be
 AE_disutility_BSC <- c(total_disutility_BSC*df_FEV1trajectory$Belumosudil.arm.1L[1],
                        0*df_FEV1trajectory$Belumosudil.arm.newly.2L.BSC[2:nrow(df_FEV1trajectory)])
 
-
-
+}
+if (include_AE_disutility=="Exclude") {
+  
+  
+  AE_disutility_belumosudil <-0
+  
+  AE_disutility_BSC <- 0
+  
+}
 
 df_outcomes_payoffs <- data.frame(
   
@@ -1380,5 +1429,18 @@ df_outcomes_payoffs <- data.frame(
                                          QALYs_BSC_clad4 , QALYs_BSC_LTx, AE_disutility_BSC))
   
 )
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
