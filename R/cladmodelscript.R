@@ -149,10 +149,16 @@ c_AE_AE10_inpatient <- 0
 c_AE_AE11_inpatient <- 0
 
 
+health_utility_method <- "SGRQ based (CLAD)"             # SGRQ based (CLAD)
+                                                         # CLAD (GOLD) stage-based COPD as proxy
+                                                         # FEV1 based (COPD as proxy)
 
-health.utility.method <- "SGRQ based (CLAD)"
-age.adjusted.utility.values <- "Yes"
+health_state_utility_source <- "Esquinas et al.(2020)"   # Esquinas et al.(2020)
+                                                         # Pickard et al.(2011) (UK index)
+                                                         # Pickard et al.(2011) (US index)
 
+include.utility.adjustment <- "No"
+include_AE_disutility <- "Include"
 # -----------------------------------------------------
 # SGRQ Scores Derived (Mapped to EQ-5D-3L)
 # -----------------------------------------------------
@@ -163,8 +169,33 @@ SGRQ_clad3 <- 63  # Score for CLAD 3
 SGRQ_clad4 <- 63  # Score for CLAD 4
 SGRQ_LTx <- 54.67  # Score for LTx
 
-include.utility.adjustment <- "No"
-include_AE_disutility <- "Include"
+FEV1_baseline_utility <- 0.739
+disutility_by_percent_reduction_FEV1 <- -0.0023
+
+
+utility_clad0_stage.based_Esquinas.source <- 0.70
+utility_clad1_stage.based_Esquinas.source <- 0.70 
+utility_clad2_stage.based_Esquinas.source <- 0.70
+utility_clad3_stage.based_Esquinas.source <- 0.66
+utility_clad4_stage.based_Esquinas.source <- 0.60
+utility_LTx_stage.based_Esquinas.source <- 0.65333
+
+utility_clad0_stage.based_Pickard.UK.source <- 0.73
+utility_clad1_stage.based_Pickard.UK.source <- 0.59 
+utility_clad2_stage.based_Pickard.UK.source <- 0.59
+utility_clad3_stage.based_Pickard.UK.source <- 0.63
+utility_clad4_stage.based_Pickard.UK.source <- 0.63
+utility_LTx_stage.based_Pickard.UK.source <- 0.61667
+
+utility_clad0_stage.based_Pickard.US.source <- 0.80
+utility_clad1_stage.based_Pickard.US.source <- 0.70
+utility_clad2_stage.based_Pickard.US.source <- 0.70
+utility_clad3_stage.based_Pickard.US.source <- 0.72
+utility_clad4_stage.based_Pickard.US.source <- 0.72
+utility_LTx_stage.based_Pickard.US.source <- 0.71333
+
+
+
 disutility_pneumonia <- -0.195
 disutility_hypertension <- -0.020
 disutility_anaemia <- -0.900
@@ -829,6 +860,10 @@ df_FEV1trajectory <- as.data.frame(df_survivaldata$Cycle) %>%
 df_FEV1trajectory$Change.FEV1.belumosudil <- calculate_FEV1_changes(df_FEV1trajectory$FEV1.belumosudil, n_baselineFEV1.clad0)
 df_FEV1trajectory$Change.FEV1.BSC <- calculate_FEV1_changes(df_FEV1trajectory$FEV1.BSC, n_baselineFEV1.clad0)
 
+# Calculate the relative change in FEV1 for both treatments from baseline FEV1 (Clad1)
+df_FEV1trajectory$Change.from.clad1.FEV1.belumosudil <- calculate_FEV1_changes(df_FEV1trajectory$FEV1.belumosudil, n_baselineFEV1)
+df_FEV1trajectory$Change.from.clad1.FEV1.BSC <- calculate_FEV1_changes(df_FEV1trajectory$FEV1.BSC, n_baselineFEV1)
+
 # Determine the CLAD stage for each treatment based on the change in FEV1
 df_FEV1trajectory$CLAD.stage.belumosudil <- calculate_CLAD_stages(df_FEV1trajectory$Change.FEV1.belumosudil)
 df_FEV1trajectory$CLAD.stage.BSC <- calculate_CLAD_stages(df_FEV1trajectory$Change.FEV1.BSC)
@@ -1252,7 +1287,7 @@ df_survivaldata <- df_survivaldata %>%
   )
   
 # -----------------------------------------------------
-# Utility Calculation Functions
+# Utility Mapping Calculation Functions
 # -----------------------------------------------------
 calculate_utility_BOS <- function(SGRQ, percentage_male) {
   # Calculate BOS utility based on SGRQ and percentage of males
@@ -1265,7 +1300,7 @@ calculate_utility_RAS <- function(SGRQ) {
 }
 
 # -----------------------------------------------------
-# Utility Calculation for Each CLAD Stage
+# Utility Calculation for Each CLAD Stage SGRQ
 # -----------------------------------------------------
 calculate_utility_cladstage <- function(SGRQ_values,
                                         percentage_male,
@@ -1284,7 +1319,7 @@ calculate_utility_cladstage <- function(SGRQ_values,
 }
 
 # -----------------------------------------------------
-# Inputs and Calculations
+# Utility CLAD calculation
 # -----------------------------------------------------
 # Define SGRQ values for each stage
 SGRQ_values <- c(SGRQ_clad0,
@@ -1303,14 +1338,51 @@ utility_cladstage <- calculate_utility_cladstage(
 )
 
 # Extract individual utilities
-utility_clad0 <- utility_cladstage["clad0"]
-utility_clad1 <- utility_cladstage["clad1"]
-utility_clad2 <- utility_cladstage["clad2"]
-utility_clad3 <- utility_cladstage["clad3"]
-utility_clad4 <- utility_cladstage["clad4"]
-utility_LTx <- utility_cladstage["LTx"]
+if (health_utility_method=="SGRQ based (CLAD)") {
+  
+  utility_clad0 <- utility_cladstage["clad0"]
+  utility_clad1 <- utility_cladstage["clad1"]
+  utility_clad2 <- utility_cladstage["clad2"]
+  utility_clad3 <- utility_cladstage["clad3"]
+  utility_clad4 <- utility_cladstage["clad4"]
+  utility_LTx <- utility_cladstage["LTx"]
+}
 
-
+if (health_utility_method=="CLAD (GOLD) stage-based COPD as proxy") {
+  
+  if (health_state_utility_source=="Esquinas et al.(2020)") {
+    
+    utility_clad0 <- utility_clad0_stage.based_Esquinas.source
+    utility_clad1 <- utility_clad1_stage.based_Esquinas.source
+    utility_clad2 <- utility_clad2_stage.based_Esquinas.source
+    utility_clad3 <- utility_clad3_stage.based_Esquinas.source
+    utility_clad4 <- utility_clad4_stage.based_Esquinas.source
+    utility_LTx <- utility_LTx_stage.based_Esquinas.source
+  }
+  if (health_state_utility_source=="Pickard et al.(2011) (UK index)") {
+    
+    utility_clad0 <- utility_clad0_stage.based_Pickard.UK.source
+    utility_clad1 <- utility_clad1_stage.based_Pickard.UK.source
+    utility_clad2 <- utility_clad2_stage.based_Pickard.UK.source
+    utility_clad3 <- utility_clad3_stage.based_Pickard.UK.source
+    utility_clad4 <- utility_clad4_stage.based_Pickard.UK.source
+    utility_LTx <- utility_LTx_stage.based_Pickard.UK.source
+  }
+  if (health_state_utility_source=="Pickard et al.(2011) (US index)") {
+    
+    utility_clad0 <- utility_clad0_stage.based_Pickard.US.source
+    utility_clad1 <- utility_clad1_stage.based_Pickard.US.source
+    utility_clad2 <- utility_clad2_stage.based_Pickard.US.source
+    utility_clad3 <- utility_clad3_stage.based_Pickard.US.source
+    utility_clad4 <- utility_clad4_stage.based_Pickard.US.source
+    utility_LTx <- utility_LTx_stage.based_Pickard.US.source
+  }
+  
+ 
+}
+# -----------------------------------------------------
+# QALYs CLAD calculation
+# -----------------------------------------------------
 
 # Calculate QALYs for Belumosudil treatment at each stage
 QALYs_Belumosudil_clad1 <- LYs_Belumosudil_clad1 * utility_clad1 * df_survivaldata$Age.adjustment.utility.multiplier # Multiply LYs at clad1 stage by the corresponding utility
@@ -1326,7 +1398,48 @@ QALYs_BSC_clad3 <- LYs_BSC_clad3 * utility_clad3 * df_survivaldata$Age.adjustmen
 QALYs_BSC_clad4 <- LYs_BSC_clad4 * utility_clad4 * df_survivaldata$Age.adjustment.utility.multiplier  # Multiply LYs at clad4 stage by the corresponding utility for BSC
 QALYs_BSC_LTx   <- LYs_BSC_LTx * utility_LTx * df_survivaldata$Age.adjustment.utility.multiplier      # Multiply LYs at LTx stage by the corresponding utility for BSC
 
+# -----------------------------------------------------
+# QALYs FEV1 calculation
+# -----------------------------------------------------
 
+QALYs_FEV1.based_belumosudil <- rep(NA, nrow(df_FEV1trajectory))
+
+QALYs_FEV1.based_belumosudil <- ( FEV1_baseline_utility + disutility_by_percent_reduction_FEV1 *
+  (
+    df_FEV1trajectory$Change.from.clad1.FEV1.belumosudil * 100 * df_FEV1trajectory$Belumosudil.arm.1L +
+      (
+        df_FEV1trajectory$Belumosudil.arm.2L.BSC + df_FEV1trajectory$Belumosudil.arm.LTx
+      ) *
+      df_FEV1trajectory$Change.from.clad1.FEV1.BSC * 100 
+  ) ) *
+  df_survivaldata$Age.adjustment.utility.multiplier *
+  (rowSums(
+    cbind(
+      LYs_Belumosudil_clad1,
+      LYs_Belumosudil_clad2,
+      LYs_Belumosudil_clad3,
+      LYs_Belumosudil_clad4 ,
+      LYs_Belumosudil_LTx
+    )
+  ))
+
+QALYs_FEV1.based_BSC <- rep(NA, nrow(df_FEV1trajectory))
+QALYs_FEV1.based_BSC <- ( FEV1_baseline_utility + disutility_by_percent_reduction_FEV1 *
+                            ( df_FEV1trajectory$Change.from.clad1.FEV1.BSC * 100 * df_FEV1trajectory$BSC.arm )) *
+  df_survivaldata$Age.adjustment.utility.multiplier *
+  (rowSums(
+    cbind(
+      LYs_BSC_clad1,
+      LYs_BSC_clad2,
+      LYs_BSC_clad3,
+      LYs_BSC_clad4 ,
+      LYs_BSC_LTx
+    )
+  ))
+
+# -----------------------------------------------------
+# Adverse Event disutility calculation
+# -----------------------------------------------------
 
 p_AE_belumosudil <- c(
   p_AE_pneumonia_belumosudil,
@@ -1417,6 +1530,10 @@ if (include_AE_disutility=="Exclude") {
   
 }
 
+
+
+
+
 df_outcomes_payoffs <- data.frame(
   
   LYs.Belumosudil.undiscounted = rowSums(cbind(LYs_Belumosudil_clad1, LYs_Belumosudil_clad2, LYs_Belumosudil_clad3,
@@ -1431,7 +1548,18 @@ df_outcomes_payoffs <- data.frame(
 )
 
 
-
+if (health_utility_method=="FEV1 based (COPD as proxy)") {
+df_outcomes_payoffs <- data.frame(
+  
+  LYs.Belumosudil.undiscounted = rowSums(cbind(LYs_Belumosudil_clad1, LYs_Belumosudil_clad2, LYs_Belumosudil_clad3,
+                                               LYs_Belumosudil_clad4 , LYs_Belumosudil_LTx)),
+  QALYs.Belumosudil.undiscounted = rowSums(cbind(QALYs_FEV1.based_belumosudil, AE_disutility_belumosudil)),
+  LYs.BSC.undiscounted = rowSums(cbind(LYs_BSC_clad1, LYs_BSC_clad2, LYs_BSC_clad3,
+                                       LYs_BSC_clad4, LYs_BSC_LTx)),
+  QALYs.BSC.undiscounted = rowSums(cbind(QALYs_FEV1.based_BSC, AE_disutility_BSC))
+  
+)
+}
 
 
 
