@@ -163,7 +163,8 @@ c_AE_AE11_inpatient <- 0  # Placeholder for AE11 inpatient management cost
 
 # Health Utility Method
 health_utility_method <- "SGRQ based (CLAD)"  # Health utility method used, based on SGRQ for CLAD stages.
-# Options include: CLAD (GOLD) stage-based COPD as proxy, 
+# Options include: SGRQ based (CLAD),
+# CLAD (GOLD) stage-based COPD as proxy, 
 # and FEV1 based (COPD as proxy).
 
 # Health State Utility Source
@@ -1779,6 +1780,17 @@ if (health_utility_method=="CLAD (GOLD) stage-based COPD as proxy") {
   
  
 }
+
+if (health_utility_method=="FEV1 based (COPD as proxy)") {
+  
+  utility_clad0 <- 0
+  utility_clad1 <- 0
+  utility_clad2 <- 0
+  utility_clad3 <- 0
+  utility_clad4 <- 0
+  utility_LTx   <- 0
+  
+}
 # -----------------------------------------------------
 # QALYs CLAD calculation
 # -----------------------------------------------------
@@ -2582,9 +2594,64 @@ AE_total.cost_BSC <- c(AE_cost_BSC*df_FEV1trajectory$Belumosudil.arm.1L[1],
 
 
 
+### TABLE PAYOFFS
+
+df_payoffs_undiscounted_belumosudil <- data.frame(
+  
+  LYs.CLAD1 = LYs_Belumosudil_clad1,
+  LYs.CLAD2 = LYs_Belumosudil_clad2,
+  LYs.CLAD3 = LYs_Belumosudil_clad3,
+  LYs.CLAD4 = LYs_Belumosudil_clad4,
+  LYs.Re.LTx = LYs_Belumosudil_LTx,
+  
+  Total.LYs = rowSums(cbind(LYs_Belumosudil_clad1, LYs_Belumosudil_clad2, LYs_Belumosudil_clad3,
+                            LYs_Belumosudil_clad4 , LYs_Belumosudil_LTx)),
+  
+  QALYs.CLAD1 =  QALYs_Belumosudil_clad1,
+  QALYs.CLAD2 =  QALYs_Belumosudil_clad2,
+  QALYs.CLAD3 =  QALYs_Belumosudil_clad3,
+  QALYs.CLAD4 =  QALYs_Belumosudil_clad4,
+  QALYs.Re.LTx = QALYs_Belumosudil_LTx,
+  AE_disutility = AE_disutility_belumosudil,
+  
+  Total.QALYs = df_outcomes_payoffs$QALYs.Belumosudil.undiscounted,
+  FEV1.Based.QALYs = df_outcomes_payoffs$QALYs.Belumosudil.undiscounted,
+  
+  Drug.Costs.1L = df_costs_payoffs$Belumosudil.1L.drug.costs,
+  Drug.Costs.2L = df_costs_payoffs$Belumosudil.2L.drug.costs,
+  
+  Total.Drug.Costs = df_costs_payoffs$Total.Belumosudil.drug.costs,
+  
+  Health.State.Costs.CLAD1 = health.state.cost_clad1_belumosudil_undiscounted,
+  Health.State.Costs.CLAD2 = health.state.cost_clad2_belumosudil_undiscounted,
+  Health.State.Costs.CLAD3 = health.state.cost_clad3_belumosudil_undiscounted,
+  Health.State.Costs.CLAD4 = health.state.cost_clad4_belumosudil_undiscounted,
+  Health.State.Costs.Re.LTx = health.state.cost_LTx_belumosudil_undiscounted,
+  
+  Total.Health.State.Cost = rowSums(cbind(health.state.cost_clad1_belumosudil_undiscounted,
+                                          health.state.cost_clad2_belumosudil_undiscounted,
+                                          health.state.cost_clad3_belumosudil_undiscounted,
+                                          health.state.cost_clad4_belumosudil_undiscounted,
+                                          health.state.cost_LTx_belumosudil_undiscounted)),
+                                    
+  AE.Costs = AE_total.cost_belumosudil
+  
+)
 
 
 
+df_outcomes_payoffs <- data.frame(
+  
+  LYs.Belumosudil.undiscounted = rowSums(cbind(LYs_Belumosudil_clad1, LYs_Belumosudil_clad2, LYs_Belumosudil_clad3,
+                                               LYs_Belumosudil_clad4 , LYs_Belumosudil_LTx)),
+  QALYs.Belumosudil.undiscounted = rowSums(cbind(QALYs_Belumosudil_clad1, QALYs_Belumosudil_clad2, QALYs_Belumosudil_clad3,
+                                                 QALYs_Belumosudil_clad4,  QALYs_Belumosudil_LTx, AE_disutility_belumosudil)),
+  LYs.BSC.undiscounted = rowSums(cbind(LYs_BSC_clad1, LYs_BSC_clad2, LYs_BSC_clad3,
+                                       LYs_BSC_clad4, LYs_BSC_LTx)),
+  QALYs.BSC.undiscounted = rowSums(cbind(QALYs_BSC_clad1 , QALYs_BSC_clad2 , QALYs_BSC_clad3,
+                                         QALYs_BSC_clad4 , QALYs_BSC_LTx, AE_disutility_BSC))
+  
+)
 
 
 
