@@ -475,9 +475,157 @@ clad_4_tacrolimus <- 63.7  # Number of doses for CLAD 4
 # Administration Costs
 # ========================================================
 
-unit_cost_admin_ECP <- 124.155
-unit_cost_admin_oral <- 0
+unit.cost_admin_ECP <- 124.155
+unit.cost_admin_oral <- 0
 
+
+# ========================================================
+# Health State Costs
+# ========================================================
+
+# --------------------------------------------------------
+# Unit Cost per Resource
+# -------------------------------------------------------- 
+
+unit.cost_ICU_visits <- 1824.6892
+unit.cost_non_ICU_visits <- 1328.6730
+unit.cost_AE_visits <- 277.2413
+unit.cost_GP_visits <- 59.9368
+unit.cost_outpatient_hospital <- 126.0945
+unit.cost_lab_services <- 3.4736
+unit.cost_other_outpatient_visits <- 126.0945
+unit.cost_HCRU_8 <- 0.0000
+unit.cost_HCRU_9 <- 0.0000
+
+# --------------------------------------------------------
+# Resource Use per Patient per Month - CLAD 0-2
+# -------------------------------------------------------- 
+
+resource.use_clad_0_2_ICU_visits_belumosudil <- 0
+resource.use_clad_0_2_ICU_visits_BSC <- 0
+
+resource.use_clad_0_2_non_ICU_visits_belumosudil <- 0.15
+resource.use_clad_0_2_non_ICU_visits_BSC <- 0.15
+
+resource.use_clad_0_2_AE_visits_belumosudil <- 0.03
+resource.use_clad_0_2_AE_visits_BSC <- 0.03
+
+resource.use_clad_0_2_GP_visits_belumosudil <- 1.52
+resource.use_clad_0_2_GP_visits_BSC <- 1.52
+
+resource.use_clad_0_2_outpatient_hospital_belumosudil <- 0.86
+resource.use_clad_0_2_outpatient_hospital_BSC <- 0.86
+
+resource.use_clad_0_2_lab_services_belumosudil <- 1.49
+resource.use_clad_0_2_lab_services_BSC <- 1.49
+
+resource.use_clad_0_2_other_outpatient_visits_belumosudil <- 0.87
+resource.use_clad_0_2_other_outpatient_visits_BSC <- 0.87
+
+resource.use_clad_0_2_HCRU_8_belumosudil <- 0
+resource.use_clad_0_2_HCRU_8_BSC <- 0
+
+resource.use_clad_0_2_HCRU_9_belumosudil <- 0
+resource.use_clad_0_2_HCRU_9_BSC <- 0
+
+# --------------------------------------------------------
+# Resource Use per Patient per Month - CLAD 3
+# -------------------------------------------------------- 
+
+resource.use_clad_3_ICU_visits_belumosudil <- 0
+resource.use_clad_3_ICU_visits_BSC <- 0
+
+resource.use_clad_3_non_ICU_visits_belumosudil <- 0.15
+resource.use_clad_3_non_ICU_visits_BSC <- 0.15
+
+resource.use_clad_3_AE_visits_belumosudil <- 0.09
+resource.use_clad_3_AE_visits_BSC <- 0.09
+
+resource.use_clad_3_GP_visits_belumosudil <- 2.32
+resource.use_clad_3_GP_visits_BSC <- 2.32
+
+resource.use_clad_3_outpatient_hospital_belumosudil <- 1.61
+resource.use_clad_3_outpatient_hospital_BSC <- 1.61
+
+resource.use_clad_3_lab_services_belumosudil <- 2.16
+resource.use_clad_3_lab_services_BSC <- 2.16
+
+resource.use_clad_3_other_outpatient_visits_belumosudil <- 1.34
+resource.use_clad_3_other_outpatient_visits_BSC <- 1.34
+
+resource.use_clad_3_HCRU_8_belumosudil <- 0
+resource.use_clad_3_HCRU_8_BSC <- 0
+
+resource.use_clad_3_HCRU_9_belumosudil <- 0
+resource.use_clad_3_HCRU_9_BSC <- 0
+
+# --------------------------------------------------------
+# Resource Use per Patient per Month - CLAD 4
+# -------------------------------------------------------- 
+
+resource.use_clad_4_ICU_visits_belumosudil <- 0.14
+resource.use_clad_4_ICU_visits_BSC <- 0.14
+
+resource.use_clad_4_non_ICU_visits_belumosudil <- 0.13
+resource.use_clad_4_non_ICU_visits_BSC <- 0.13
+
+resource.use_clad_4_AE_visits_belumosudil <- 0.14
+resource.use_clad_4_AE_visits_BSC <- 0.14
+
+resource.use_clad_4_GP_visits_belumosudil <- 3.19
+resource.use_clad_4_GP_visits_BSC <- 3.19
+
+resource.use_clad_4_outpatient_hospital_belumosudil <- 1.6
+resource.use_clad_4_outpatient_hospital_BSC <- 1.6
+
+resource.use_clad_4_lab_services_belumosudil <- 2.71
+resource.use_clad_4_lab_services_BSC <- 2.71
+
+resource.use_clad_4_other_outpatient_visits_belumosudil <- 1.66
+resource.use_clad_4_other_outpatient_visits_BSC <- 1.66
+
+resource.use_clad_4_HCRU_8_belumosudil <- 0
+resource.use_clad_4_HCRU_8_BSC <- 0
+
+resource.use_clad_4_HCRU_9_belumosudil <- 0
+resource.use_clad_4_HCRU_9_BSC <- 0
+
+# --------------------------------------------------------
+# Health State Costs - source : Sheshadri et al. (2021)
+# --------------------------------------------------------
+
+health.state.cost_source <- "No"
+
+health.state.cost_sheshadri.source_clad0_belumosudil <- 419.789
+health.state.cost_sheshadri.source_clad1_belumosudil <- 419.789
+health.state.cost_sheshadri.source_clad2_belumosudil <- 818.361
+health.state.cost_sheshadri.source_clad3_belumosudil <- 1306.346
+health.state.cost_sheshadri.source_clad4_belumosudil <- 3820.533
+
+health.state.cost_sheshadri.source_clad0_BSC <- 419.789
+health.state.cost_sheshadri.source_clad1_BSC <- 419.789
+health.state.cost_sheshadri.source_clad2_BSC <- 818.361
+health.state.cost_sheshadri.source_clad3_BSC <- 1306.346
+health.state.cost_sheshadri.source_clad4_BSC <- 3820.533
+
+# ========================================================
+# Percentage Reduction in Health State Costs over Time
+# ========================================================
+
+percentage_reduction_health.state.cost_per.stage <- "Include"
+
+reduction_health.state.cost_clad0 <- 0
+reduction_health.state.cost_clad1 <- 0.22524
+reduction_health.state.cost_clad2 <- 0.22524
+reduction_health.state.cost_clad3 <- 0.22524
+reduction_health.state.cost_clad4 <- 0.22524
+reduction_health.state.cost_LTx <- 0.22524
+
+# ========================================================
+# Lung Re_Transplantation Costs
+# ========================================================
+
+one.off_cost_LTx <- 80428.14
 
 ###########################################################
 ###########################################################
@@ -1256,6 +1404,7 @@ df_FEV1trajectory <- df_FEV1trajectory %>%
     Belumosudil.arm.LTx = rep(NA, nrow(df_FEV1trajectory)),  # Transition to lung transplant (LTx) under Belumosudil treatment
     Belumosudil.arm.Dead = rep(NA, nrow(df_FEV1trajectory)), # Death under Belumosudil treatment
     BSC.arm = rep(NA, nrow(df_FEV1trajectory)),              # Best Supportive of Care (BSC) treatment
+    BSC.arm.2L = rep(0, nrow(df_FEV1trajectory)),              # Best Supportive of Care (BSC) treatment 2L
     BSC.arm.LTx = rep(NA, nrow(df_FEV1trajectory)),          # Transition to lung transplant (LTx) under BSC treatment
     BSC.arm.Dead = rep(NA, nrow(df_FEV1trajectory))          # Death under BSC treatment
   )
@@ -2006,7 +2155,7 @@ price_mg_ml_tacrolimus <- calculate_price_mg_ml(
 calculate_disease_management_cycle <- function(
     azathioprine, price_mg_ml_azathioprine, drug_dose_mg_azathioprine,
     mmf, price_mg_ml_mmf, drug_dose_mg_mmf,
-    ecp, price_mg_ml_ecp, drug_dose_mg_ecp, unit_cost_admin_ECP = 0,
+    ecp, price_mg_ml_ecp, drug_dose_mg_ecp, unit.cost_admin_ECP = 0,
     prednisone, price_mg_ml_prednisone, drug_dose_mg_prednisone,
     cyclosporine, price_mg_ml_cyclosporine, drug_dose_mg_cyclosporine,
     tacrolimus, price_mg_ml_tacrolimus, drug_dose_mg_tacrolimus
@@ -2019,7 +2168,7 @@ calculate_disease_management_cycle <- function(
     prednisone * price_mg_ml_prednisone * drug_dose_mg_prednisone,
     cyclosporine * price_mg_ml_cyclosporine * drug_dose_mg_cyclosporine,
     tacrolimus * price_mg_ml_tacrolimus * drug_dose_mg_tacrolimus
-  ) + ecp * unit_cost_admin_ECP
+  ) + ecp * unit.cost_admin_ECP
   
   return(total_cost)
 }
@@ -2047,7 +2196,7 @@ disease_management_cycle_clad0 <- calculate_disease_management_cycle(
   prices = c(price_mg_ml_azathioprine, price_mg_ml_mmf, price_mg_ml_ecp, price_mg_ml_prednisone, price_mg_ml_cyclosporine, price_mg_ml_tacrolimus),
   doses = c(drug_dose_mg_azathioprine, drug_dose_mg_mmf, drug_dose_mg_ecp, drug_dose_mg_prednisone, drug_dose_mg_cyclosporine, drug_dose_mg_tacrolimus),
   admin_factor = clad_0_2_ecp,  # Proportion of patients receiving ECP
-  admin_cost = unit_cost_admin_ECP # Cost per unit administration of ECP
+  admin_cost = unit.cost_admin_ECP # Cost per unit administration of ECP
 )
 
 # Disease management costs for CLAD 1 and 2 (same as CLAD 0)
@@ -2060,7 +2209,7 @@ disease_management_cycle_clad3 <- calculate_disease_management_cycle(
   prices = c(price_mg_ml_azathioprine, price_mg_ml_mmf, price_mg_ml_ecp, price_mg_ml_prednisone, price_mg_ml_cyclosporine, price_mg_ml_tacrolimus),
   doses = c(drug_dose_mg_azathioprine, drug_dose_mg_mmf, drug_dose_mg_ecp, drug_dose_mg_prednisone, drug_dose_mg_cyclosporine, drug_dose_mg_tacrolimus),
   admin_factor = clad_3_ecp,  # Proportion of patients receiving ECP
-  admin_cost = unit_cost_admin_ECP # Cost per unit administration of ECP
+  admin_cost = unit.cost_admin_ECP # Cost per unit administration of ECP
 )
 
 # Disease management costs for CLAD 4
@@ -2069,15 +2218,76 @@ disease_management_cycle_clad4 <- calculate_disease_management_cycle(
   prices = c(price_mg_ml_azathioprine, price_mg_ml_mmf, price_mg_ml_ecp, price_mg_ml_prednisone, price_mg_ml_cyclosporine, price_mg_ml_tacrolimus),
   doses = c(drug_dose_mg_azathioprine, drug_dose_mg_mmf, drug_dose_mg_ecp, drug_dose_mg_prednisone, drug_dose_mg_cyclosporine, drug_dose_mg_tacrolimus),
   admin_factor = clad_4_ecp,  # Proportion of patients receiving ECP
-  admin_cost = unit_cost_admin_ECP # Cost per unit administration of ECP
+  admin_cost = unit.cost_admin_ECP # Cost per unit administration of ECP
 )
 
 disease_management_cycle_LTx <- mean(c(disease_management_cycle_clad2, disease_management_cycle_clad3, disease_management_cycle_clad4))
 
 
 
+# Define a function to calculate health state costs for a given CLAD and treatment
+calculate_health_state_cost <- function(clad, treatment) {
+  # Dynamically generate variable names for resource use
+  ICU_visits <- get(paste0("resource.use_clad_", clad, "_ICU_visits_", treatment))
+  non_ICU_visits <- get(paste0("resource.use_clad_", clad, "_non_ICU_visits_", treatment))
+  AE_visits <- get(paste0("resource.use_clad_", clad, "_AE_visits_", treatment))
+  GP_visits <- get(paste0("resource.use_clad_", clad, "_GP_visits_", treatment))
+  outpatient_hospital <- get(paste0("resource.use_clad_", clad, "_outpatient_hospital_", treatment))
+  lab_services <- get(paste0("resource.use_clad_", clad, "_lab_services_", treatment))
+  other_outpatient_visits <- get(paste0("resource.use_clad_", clad, "_other_outpatient_visits_", treatment))
+  HCRU_8 <- get(paste0("resource.use_clad_", clad, "_HCRU_8_", treatment))
+  HCRU_9 <- get(paste0("resource.use_clad_", clad, "_HCRU_9_", treatment))
+  
+  # Calculate total cost
+  total_cost <- sum(
+    unit.cost_ICU_visits * ICU_visits,
+    unit.cost_non_ICU_visits * non_ICU_visits,
+    unit.cost_AE_visits * AE_visits,
+    unit.cost_GP_visits * GP_visits,
+    unit.cost_outpatient_hospital * outpatient_hospital,
+    unit.cost_lab_services * lab_services,
+    unit.cost_other_outpatient_visits * other_outpatient_visits,
+    unit.cost_HCRU_8 * HCRU_8,
+    unit.cost_HCRU_9 * HCRU_9
+  )
+  
+  return(total_cost)
+}
 
+# Calculate health state costs for Belumosudil plus BSC
+health.state.cost_clad0_belumosudil <- calculate_health_state_cost("0_2", "belumosudil")
+health.state.cost_clad1_belumosudil <- health.state.cost_clad0_belumosudil
+health.state.cost_clad2_belumosudil <- health.state.cost_clad0_belumosudil
+health.state.cost_clad3_belumosudil <- calculate_health_state_cost(3, "belumosudil")
+health.state.cost_clad4_belumosudil <- calculate_health_state_cost(4, "belumosudil")
 
+# Calculate health state costs for BSC alone
+health.state.cost_clad0_BSC <- calculate_health_state_cost("0_2", "BSC")
+health.state.cost_clad1_BSC <- health.state.cost_clad0_BSC
+health.state.cost_clad2_BSC <- health.state.cost_clad0_BSC
+health.state.cost_clad3_BSC <- calculate_health_state_cost(3, "BSC")
+health.state.cost_clad4_BSC <- calculate_health_state_cost(4, "BSC")
+
+if (health.state.cost_source=="Sheshadri et al.(2021) [Based on Health State Costs]") {
+  
+  health.state.cost_clad0_belumosudil <- health.state.cost_sheshadri.source_clad0_belumosudil
+  health.state.cost_clad1_belumosudil <- health.state.cost_sheshadri.source_clad1_belumosudil
+  health.state.cost_clad2_belumosudil <- health.state.cost_sheshadri.source_clad2_belumosudil
+  health.state.cost_clad3_belumosudil <- health.state.cost_sheshadri.source_clad3_belumosudil
+  health.state.cost_clad4_belumosudil <- health.state.cost_sheshadri.source_clad4_belumosudil
+  
+  health.state.cost_clad0_BSC <- health.state.cost_sheshadri.source_clad0_BSC
+  health.state.cost_clad1_BSC <- health.state.cost_sheshadri.source_clad1_BSC
+  health.state.cost_clad2_BSC <- health.state.cost_sheshadri.source_clad2_BSC
+  health.state.cost_clad3_BSC <- health.state.cost_sheshadri.source_clad3_BSC
+  health.state.cost_clad4_BSC <- health.state.cost_sheshadri.source_clad4_BSC
+  
+}
+
+health.state.cost_LTx <- mean(c(health.state.cost_clad2_BSC,
+                           health.state.cost_clad3_BSC,
+                           health.state.cost_clad4_BSC
+))
 
 
 belumosudil.1L.drug.costs <- rep(NA, nrow(df_FEV1trajectory))
@@ -2098,6 +2308,282 @@ df_costs_payoffs <- data.frame(
   Belumosudil.2L.drug.costs = belumosudil.2L.drug.costs,
   Total.Belumosudil.drug.costs = rowSums(cbind(belumosudil.1L.drug.costs,belumosudil.2L.drug.costs ))
 )
+
+
+
+
+
+
+
+
+
+# Function to initialize cost vectors
+initialize_costs <- function(df, n) {
+  rep(0, nrow(df))
+}
+
+# Function to calculate costs for a specific CLAD stage
+calculate_clad_cost <- function(df, stage_col, arm_col, cycle_cost, state_cost, start_idx, end_idx) {
+  costs <- initialize_costs(df, nrow(df))
+  for (i in start_idx:end_idx) {
+    costs[i] <- df[[arm_col]][i] * (cycle_cost + state_cost)
+  }
+  return(costs)
+}
+
+# Function to apply yearly reductions to costs
+apply_reduction <- function(costs, reduction_rate, years) {
+  costs * (1 - reduction_rate) ^ (floor(years))
+}
+
+# Initialize cost variables
+health.state.cost_clad1_belumosudil_undiscounted.1L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad1_belumosudil_undiscounted.2L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad2_belumosudil_undiscounted.1L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad2_belumosudil_undiscounted.2L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad3_belumosudil_undiscounted.1L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad3_belumosudil_undiscounted.2L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad4_belumosudil_undiscounted.1L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad4_belumosudil_undiscounted.2L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_LTx_belumosudil_undiscounted <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+
+health.state.cost_clad1_BSC_undiscounted.1L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad1_BSC_undiscounted.2L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad2_BSC_undiscounted.1L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad2_BSC_undiscounted.2L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad3_BSC_undiscounted.1L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad3_BSC_undiscounted.2L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad4_BSC_undiscounted.1L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_clad4_BSC_undiscounted.2L <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+health.state.cost_LTx_BSC_undiscounted <- initialize_costs(df_FEV1trajectory, nrow(df_FEV1trajectory))
+
+# Calculate costs for each CLAD stage
+
+  #Belumosudil
+
+health.state.cost_clad1_belumosudil_undiscounted.1L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.belumosudil", "Belumosudil.arm.1L",
+  disease_management_cycle_clad1, health.state.cost_clad1_belumosudil,
+  1, last(which(df_FEV1trajectory$CLAD.stage.belumosudil == 1))
+)
+
+health.state.cost_clad1_belumosudil_undiscounted.2L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.BSC", "Belumosudil.arm.2L.BSC",
+  disease_management_cycle_clad1, health.state.cost_clad1_BSC,
+  1, last(which(df_FEV1trajectory$CLAD.stage.BSC == 1))
+)
+
+health.state.cost_clad2_belumosudil_undiscounted.1L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.belumosudil", "Belumosudil.arm.1L",
+  disease_management_cycle_clad2, health.state.cost_clad2_belumosudil,
+  last(which(df_FEV1trajectory$CLAD.stage.belumosudil == 1)) + 1,
+  last(which(df_FEV1trajectory$CLAD.stage.belumosudil == 2))
+)
+
+health.state.cost_clad2_belumosudil_undiscounted.2L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.BSC", "Belumosudil.arm.2L.BSC",
+  disease_management_cycle_clad2, health.state.cost_clad2_BSC,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 1)) + 1,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 2))
+)
+
+health.state.cost_clad3_belumosudil_undiscounted.1L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.belumosudil", "Belumosudil.arm.1L",
+  disease_management_cycle_clad3, health.state.cost_clad3_belumosudil,
+  last(which(df_FEV1trajectory$CLAD.stage.belumosudil == 2)) + 1,
+  last(which(df_FEV1trajectory$CLAD.stage.belumosudil == 3))
+)
+
+health.state.cost_clad3_belumosudil_undiscounted.2L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.BSC", "Belumosudil.arm.2L.BSC",
+  disease_management_cycle_clad3, health.state.cost_clad3_BSC,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 2)) + 1,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 3))
+)
+
+health.state.cost_clad4_belumosudil_undiscounted.1L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.belumosudil", "Belumosudil.arm.1L",
+  disease_management_cycle_clad4, health.state.cost_clad4_belumosudil,
+  last(which(df_FEV1trajectory$CLAD.stage.belumosudil == 3)) + 1,
+  last(which(df_FEV1trajectory$CLAD.stage.belumosudil == 4))
+)
+
+health.state.cost_clad4_belumosudil_undiscounted.2L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.BSC", "Belumosudil.arm.2L.BSC",
+  disease_management_cycle_clad4, health.state.cost_clad4_BSC,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 3)) + 1,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 4))
+)
+
+
+  # BSC
+
+health.state.cost_clad1_BSC_undiscounted.1L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.BSC", "BSC.arm",
+  disease_management_cycle_clad1, health.state.cost_clad1_BSC,
+  1, last(which(df_FEV1trajectory$CLAD.stage.BSC == 1))
+)
+
+health.state.cost_clad1_BSC_undiscounted.2L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.BSC", "BSC.arm.2L",
+  disease_management_cycle_clad1, health.state.cost_clad1_BSC,
+  1, last(which(df_FEV1trajectory$CLAD.stage.BSC == 1))
+)
+
+health.state.cost_clad2_BSC_undiscounted.1L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.BSC", "BSC.arm",
+  disease_management_cycle_clad2, health.state.cost_clad2_BSC,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 1)) + 1,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 2))
+)
+
+health.state.cost_clad2_BSC_undiscounted.2L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.BSC", "BSC.arm.2L",
+  disease_management_cycle_clad2, health.state.cost_clad2_BSC,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 1)) + 1,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 2))
+)
+
+health.state.cost_clad3_BSC_undiscounted.1L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.BSC", "BSC.arm",
+  disease_management_cycle_clad3, health.state.cost_clad3_BSC,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 2)) + 1,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 3))
+)
+
+health.state.cost_clad3_BSC_undiscounted.2L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.BSC", "BSC.arm.2L",
+  disease_management_cycle_clad3, health.state.cost_clad3_BSC,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 2)) + 1,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 3))
+)
+
+health.state.cost_clad4_BSC_undiscounted.1L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.BSC", "BSC.arm",
+  disease_management_cycle_clad4, health.state.cost_clad4_BSC,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 3)) + 1,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 4))
+)
+
+health.state.cost_clad4_BSC_undiscounted.2L <- calculate_clad_cost(
+  df_FEV1trajectory, "CLAD.stage.BSC", "BSC.arm.2L",
+  disease_management_cycle_clad4, health.state.cost_clad4_BSC,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 3)) + 1,
+  last(which(df_FEV1trajectory$CLAD.stage.BSC == 4))
+)
+
+# Calculate costs for LTx stage
+for (i in 1:nrow(df_FEV1trajectory)) {
+  
+  health.state.cost_LTx_belumosudil_undiscounted[i] <- df_FEV1trajectory$Belumosudil.arm.LTx[i] *
+    (health.state.cost_LTx + disease_management_cycle_LTx)
+  
+  health.state.cost_LTx_BSC_undiscounted[i] <- df_FEV1trajectory$BSC.arm.LTx[i] *
+    (health.state.cost_LTx + disease_management_cycle_LTx)
+}
+
+
+
+# Apply reductions to costs based on yearly survival data
+
+  #Belumosudil
+
+health.state.cost_clad1_belumosudil_undiscounted <- apply_reduction(
+  rowSums(cbind(health.state.cost_clad1_belumosudil_undiscounted.1L, health.state.cost_clad1_belumosudil_undiscounted.2L)),
+  reduction_health.state.cost_clad1, df_survivaldata$Year[1:nrow(df_survivaldata)]
+)
+
+health.state.cost_clad2_belumosudil_undiscounted <- apply_reduction(
+  rowSums(cbind(health.state.cost_clad2_belumosudil_undiscounted.1L, health.state.cost_clad2_belumosudil_undiscounted.2L)),
+  reduction_health.state.cost_clad2, df_survivaldata$Year[1:nrow(df_survivaldata)]
+)
+
+health.state.cost_clad3_belumosudil_undiscounted <- apply_reduction(
+  rowSums(cbind(health.state.cost_clad3_belumosudil_undiscounted.1L, health.state.cost_clad3_belumosudil_undiscounted.2L)),
+  reduction_health.state.cost_clad3, df_survivaldata$Year[1:nrow(df_survivaldata)]
+)
+
+health.state.cost_clad4_belumosudil_undiscounted <- apply_reduction(
+  rowSums(cbind(health.state.cost_clad4_belumosudil_undiscounted.1L, health.state.cost_clad4_belumosudil_undiscounted.2L)),
+  reduction_health.state.cost_clad4, df_survivaldata$Year[1:nrow(df_survivaldata)]
+)
+
+health.state.cost_LTx_belumosudil_undiscounted <- apply_reduction(
+  health.state.cost_LTx_belumosudil_undiscounted,
+  reduction_health.state.cost_LTx, df_survivaldata$Year[1:nrow(df_survivaldata)]
+)
+
+
+  # BSC
+
+health.state.cost_clad1_BSC_undiscounted <- apply_reduction(
+  rowSums(cbind(health.state.cost_clad1_BSC_undiscounted.1L, health.state.cost_clad1_BSC_undiscounted.2L)),
+  reduction_health.state.cost_clad1, df_survivaldata$Year[1:nrow(df_survivaldata)]
+)
+
+health.state.cost_clad2_BSC_undiscounted <- apply_reduction(
+  rowSums(cbind(health.state.cost_clad2_BSC_undiscounted.1L, health.state.cost_clad2_BSC_undiscounted.2L)),
+  reduction_health.state.cost_clad2, df_survivaldata$Year[1:nrow(df_survivaldata)]
+)
+
+health.state.cost_clad3_BSC_undiscounted <- apply_reduction(
+  rowSums(cbind(health.state.cost_clad3_BSC_undiscounted.1L, health.state.cost_clad3_BSC_undiscounted.2L)),
+  reduction_health.state.cost_clad3, df_survivaldata$Year[1:nrow(df_survivaldata)]
+)
+
+health.state.cost_clad4_BSC_undiscounted <- apply_reduction(
+  rowSums(cbind(health.state.cost_clad4_BSC_undiscounted.1L, health.state.cost_clad4_BSC_undiscounted.2L)),
+  reduction_health.state.cost_clad4, df_survivaldata$Year[1:nrow(df_survivaldata)]
+)
+
+health.state.cost_LTx_BSC_undiscounted <- apply_reduction(
+  health.state.cost_LTx_BSC_undiscounted,
+  reduction_health.state.cost_LTx, df_survivaldata$Year[1:nrow(df_survivaldata)]
+)
+
+
+## Adverse Event 
+
+# Calculate AE cost per cycle for Belumosudil
+AE_cost_belumosudil <- sum(
+  p_AE_pneumonia_belumosudil * (p_AE_managed.outpatient * c_AE_pneumonia_outpatient + (1 - p_AE_managed.outpatient) * c_AE_pneumonia_inpatient),
+  p_AE_hypertension_belumosudil * (p_AE_managed.outpatient * c_AE_hypertension_outpatient + (1 - p_AE_managed.outpatient) * c_AE_hypertension_inpatient),
+  p_AE_anaemia_belumosudil * (p_AE_managed.outpatient * c_AE_anaemia_outpatient + (1 - p_AE_managed.outpatient) * c_AE_anaemia_inpatient),
+  p_AE_thrombocytopenia_belumosudil * (p_AE_managed.outpatient * c_AE_thrombocytopenia_outpatient + (1 - p_AE_managed.outpatient) * c_AE_thrombocytopenia_inpatient),
+  p_AE_hyperglycaemia_belumosudil * (p_AE_managed.outpatient * c_AE_hyperglycaemia_outpatient + (1 - p_AE_managed.outpatient) * c_AE_hyperglycaemia_inpatient),
+  p_AE_GGT_increased_belumosudil * (p_AE_managed.outpatient * c_AE_GGT_increased_outpatient + (1 - p_AE_managed.outpatient) * c_AE_GGT_increased_inpatient),
+  p_AE_diarrhoea_belumosudil * (p_AE_managed.outpatient * c_AE_diarrhoea_outpatient + (1 - p_AE_managed.outpatient) * c_AE_diarrhoea_inpatient),
+  p_AE_AE8_belumosudil * (p_AE_managed.outpatient * c_AE_AE8_outpatient + (1 - p_AE_managed.outpatient) * c_AE_AE8_inpatient),
+  p_AE_AE9_belumosudil * (p_AE_managed.outpatient * c_AE_AE9_outpatient + (1 - p_AE_managed.outpatient) * c_AE_AE9_inpatient),
+  p_AE_AE10_belumosudil * (p_AE_managed.outpatient * c_AE_AE10_outpatient + (1 - p_AE_managed.outpatient) * c_AE_AE10_inpatient),
+  p_AE_AE11_belumosudil * (p_AE_managed.outpatient * c_AE_AE11_outpatient + (1 - p_AE_managed.outpatient) * c_AE_AE11_inpatient)
+)
+
+# Calculate AE cost per cycle for Best Supportive Care (BSC)
+AE_cost_BSC <- sum(
+  p_AE_pneumonia_BSC * (p_AE_managed.outpatient * c_AE_pneumonia_outpatient + (1 - p_AE_managed.outpatient) * c_AE_pneumonia_inpatient),
+  p_AE_hypertension_BSC * (p_AE_managed.outpatient * c_AE_hypertension_outpatient + (1 - p_AE_managed.outpatient) * c_AE_hypertension_inpatient),
+  p_AE_anaemia_BSC * (p_AE_managed.outpatient * c_AE_anaemia_outpatient + (1 - p_AE_managed.outpatient) * c_AE_anaemia_inpatient),
+  p_AE_thrombocytopenia_BSC * (p_AE_managed.outpatient * c_AE_thrombocytopenia_outpatient + (1 - p_AE_managed.outpatient) * c_AE_thrombocytopenia_inpatient),
+  p_AE_hyperglycaemia_BSC * (p_AE_managed.outpatient * c_AE_hyperglycaemia_outpatient + (1 - p_AE_managed.outpatient) * c_AE_hyperglycaemia_inpatient),
+  p_AE_GGT_increased_BSC * (p_AE_managed.outpatient * c_AE_GGT_increased_outpatient + (1 - p_AE_managed.outpatient) * c_AE_GGT_increased_inpatient),
+  p_AE_diarrhoea_BSC * (p_AE_managed.outpatient * c_AE_diarrhoea_outpatient + (1 - p_AE_managed.outpatient) * c_AE_diarrhoea_inpatient),
+  p_AE_AE8_BSC * (p_AE_managed.outpatient * c_AE_AE8_outpatient + (1 - p_AE_managed.outpatient) * c_AE_AE8_inpatient),
+  p_AE_AE9_BSC * (p_AE_managed.outpatient * c_AE_AE9_outpatient + (1 - p_AE_managed.outpatient) * c_AE_AE9_inpatient),
+  p_AE_AE10_BSC * (p_AE_managed.outpatient * c_AE_AE10_outpatient + (1 - p_AE_managed.outpatient) * c_AE_AE10_inpatient),
+  p_AE_AE11_BSC * (p_AE_managed.outpatient * c_AE_AE11_outpatient + (1 - p_AE_managed.outpatient) * c_AE_AE11_inpatient)
+)
+
+AE_total.cost_belumosudil <- c(AE_cost_belumosudil*df_FEV1trajectory$Belumosudil.arm.1L[1],
+                               AE_cost_BSC*df_FEV1trajectory$Belumosudil.arm.newly.2L.BSC[2:nrow(df_FEV1trajectory)])
+
+AE_total.cost_BSC <- c(AE_cost_BSC*df_FEV1trajectory$Belumosudil.arm.1L[1],
+                       0*df_FEV1trajectory$Belumosudil.arm.newly.2L.BSC[2:nrow(df_FEV1trajectory)])
+
+
+
+
+
 
 
 
