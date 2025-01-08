@@ -1713,7 +1713,7 @@ calculate_utility_cladstage <- function(SGRQ_values,
   # Combine BOS and RAS utilities weighted by probabilities
   utilities <- p_BOS * BOS_utilities + p_RAS * RAS_utilities
   
-  # Assign names for clarity
+  # Assign names
   names(utilities) <- c("clad0", "clad1", "clad2", "clad3", "clad4", "LTx")
   return(utilities)
 }
@@ -2312,17 +2312,21 @@ belumosudil.2L.drug.costs[1] <- df_FEV1trajectory$Belumosudil.arm.2L.BSC[1] * dr
 belumosudil.2L.drug.costs[2] <- df_FEV1trajectory$Belumosudil.arm.2L.BSC[2] * drug_cost_cycle_2_BSC
 belumosudil.2L.drug.costs[3:nrow(df_FEV1trajectory)] <- df_FEV1trajectory$Belumosudil.arm.2L.BSC[3:nrow(df_FEV1trajectory)] * drug_cost_subsequent_cycles_BSC
 
+BSC.drug.costs <- rep(NA, nrow(df_FEV1trajectory))
+BSC.drug.costs[1] <- df_FEV1trajectory$BSC.arm[1] * drug_cost_first_cycle_BSC
+BSC.drug.costs[2] <- df_FEV1trajectory$BSC.arm[2] * drug_cost_cycle_2_BSC
+BSC.drug.costs[3:nrow(df_FEV1trajectory)] <- df_FEV1trajectory$BSC.arm[3:nrow(df_FEV1trajectory)] * drug_cost_subsequent_cycles_BSC
 
 
 df_costs_payoffs <- data.frame(
   
   Belumosudil.1L.drug.costs = belumosudil.1L.drug.costs,
   Belumosudil.2L.drug.costs = belumosudil.2L.drug.costs,
-  Total.Belumosudil.drug.costs = rowSums(cbind(belumosudil.1L.drug.costs,belumosudil.2L.drug.costs ))
+  Total.Belumosudil.drug.costs = rowSums(cbind(belumosudil.1L.drug.costs,belumosudil.2L.drug.costs )),
+  BSC.arm.drug.costs = BSC.drug.costs,
+  Total.BSC.drug.costs = BSC.drug.costs
+  
 )
-
-
-
 
 
 
@@ -2639,19 +2643,68 @@ df_payoffs_undiscounted_belumosudil <- data.frame(
 )
 
 
-
-df_outcomes_payoffs <- data.frame(
+df_payoffs_undiscounted_BSC <- data.frame(
   
-  LYs.Belumosudil.undiscounted = rowSums(cbind(LYs_Belumosudil_clad1, LYs_Belumosudil_clad2, LYs_Belumosudil_clad3,
-                                               LYs_Belumosudil_clad4 , LYs_Belumosudil_LTx)),
-  QALYs.Belumosudil.undiscounted = rowSums(cbind(QALYs_Belumosudil_clad1, QALYs_Belumosudil_clad2, QALYs_Belumosudil_clad3,
-                                                 QALYs_Belumosudil_clad4,  QALYs_Belumosudil_LTx, AE_disutility_belumosudil)),
-  LYs.BSC.undiscounted = rowSums(cbind(LYs_BSC_clad1, LYs_BSC_clad2, LYs_BSC_clad3,
-                                       LYs_BSC_clad4, LYs_BSC_LTx)),
-  QALYs.BSC.undiscounted = rowSums(cbind(QALYs_BSC_clad1 , QALYs_BSC_clad2 , QALYs_BSC_clad3,
-                                         QALYs_BSC_clad4 , QALYs_BSC_LTx, AE_disutility_BSC))
+  LYs.CLAD1 = LYs_BSC_clad1,
+  LYs.CLAD2 = LYs_BSC_clad2,
+  LYs.CLAD3 = LYs_BSC_clad3,
+  LYs.CLAD4 = LYs_BSC_clad4,
+  LYs.Re.LTx = LYs_BSC_LTx,
+  
+  Total.LYs = rowSums(cbind(LYs_BSC_clad1, LYs_BSC_clad2, LYs_BSC_clad3,
+                            LYs_BSC_clad4 , LYs_BSC_LTx)),
+  
+  QALYs.CLAD1 =  QALYs_BSC_clad1,
+  QALYs.CLAD2 =  QALYs_BSC_clad2,
+  QALYs.CLAD3 =  QALYs_BSC_clad3,
+  QALYs.CLAD4 =  QALYs_BSC_clad4,
+  QALYs.Re.LTx = QALYs_BSC_LTx,
+  AE_disutility = AE_disutility_BSC,
+  
+  Total.QALYs = df_outcomes_payoffs$QALYs.BSC.undiscounted,
+  FEV1.Based.QALYs = df_outcomes_payoffs$QALYs.BSC.undiscounted,
+  
+  Drug.Costs = df_costs_payoffs$BSC.arm.drug.costs,
+
+  Total.Drug.Costs = df_costs_payoffs$Total.BSC.drug.costs,
+  
+  Health.State.Costs.CLAD1 = health.state.cost_clad1_BSC_undiscounted,
+  Health.State.Costs.CLAD2 = health.state.cost_clad2_BSC_undiscounted,
+  Health.State.Costs.CLAD3 = health.state.cost_clad3_BSC_undiscounted,
+  Health.State.Costs.CLAD4 = health.state.cost_clad4_BSC_undiscounted,
+  Health.State.Costs.Re.LTx = health.state.cost_LTx_BSC_undiscounted,
+  
+  Total.Health.State.Cost = rowSums(cbind(health.state.cost_clad1_BSC_undiscounted,
+                                          health.state.cost_clad2_BSC_undiscounted,
+                                          health.state.cost_clad3_BSC_undiscounted,
+                                          health.state.cost_clad4_BSC_undiscounted,
+                                          health.state.cost_LTx_BSC_undiscounted)),
+  
+  AE.Costs = AE_total.cost_BSC
   
 )
+
+
+
+deterministic_results <- data.frame(
+  
+  Treatment = c("Belumosudil plus BSC", "BSC alone"),
+  
+  Total.Cost = c(sum(sum(df_payoffs_undiscounted_belumosudil$Total.Drug.Costs), sum(df_payoffs_undiscounted_belumosudil$Total.Health.State.Cost), sum(df_payoffs_undiscounted_belumosudil$AE.Costs)), 
+                 sum(sum(df_payoffs_undiscounted_BSC$Total.Drug.Costs), sum(df_payoffs_undiscounted_BSC$Total.Health.State.Cost), sum(df_payoffs_undiscounted_BSC$AE.Costs))),
+  Incr.Cost = c(NA, sum(df_payoffs_undiscounted_belumosudil$Total.Drug.Costs)- sum(df_payoffs_undiscounted_BSC$Total.Drug.Costs)),
+  
+  Total.QALYs = c(sum(df_payoffs_undiscounted_belumosudil$Total.QALYs), sum(df_payoffs_undiscounted_BSC$Total.QALYs)),
+  Incr.QALYs = c(NA, sum(df_payoffs_undiscounted_belumosudil$Total.QALYs)- sum(df_payoffs_undiscounted_BSC$Total.QALYs)),
+  
+  Total.LYs = c(sum(df_payoffs_undiscounted_belumosudil$Total.LYs), sum(df_payoffs_undiscounted_BSC$Total.LYs)),
+  Incr.LYs = c(NA, sum(df_payoffs_undiscounted_belumosudil$Total.LYs) - sum(df_payoffs_undiscounted_BSC$Total.LYs))
+  
+  
+  
+)
+
+
 
 
 
