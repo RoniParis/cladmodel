@@ -49,7 +49,7 @@ rr_decline_belumosudil_RAS <- 0.27  # RAS patients
 # ========================================================
 # Survival Analysis Parameters
 # ========================================================
-survival_function <- "Log-normal"  # Type of survival distribution used
+survival_function <- "Gamma"  # Type of survival distribution used
 hr_belumosudil <- 0.73             # Hazard ratio for Belumosudil
 hr_clad1 <- 0.8                    # Hazard ratio for Clad1
 hr_clad2 <- 1                      # Hazard ratio for Clad2
@@ -1309,10 +1309,15 @@ general_mortality <- general_mortality %>%
   filter(Age > mean_age - 1)
 
 
+
+general_pop_mortality <- read_excel("~/general_pop_mortality.xlsx")
+
+
+
 # Initialize a new column for belumosudil cycle-specific mortality probabilities in df_survivaldata
 df_survivaldata$p_cycle_mortality_belumosudil <- rep(NA, nrow(df_survivaldata))
 
-
+ 
 # Calculate mortality probabilities for belumosudil when CLAD stage = 1
 df_survivaldata$p_cycle_mortality_belumosudil[1:last(which(df_FEV1trajectory$CLAD.stage.belumosudil == 1))] <- 
   (1 - df_survivaldata$S.t_clad1.belumosudil / lag(df_survivaldata$S.t_clad1.belumosudil))[1:length(which(df_FEV1trajectory$CLAD.stage.belumosudil == 1))]
@@ -1335,7 +1340,7 @@ df_survivaldata$p_cycle_mortality_belumosudil[which(df_survivaldata$Age >= 100)]
 # Set the first cycle's mortality probability to 0 (baseline)
 df_survivaldata$p_cycle_mortality_belumosudil[1] <- 0
 
-
+df_survivaldata$p_cycle_mortality_belumosudil <- pmax(df_survivaldata$p_cycle_mortality_belumosudil, general_mortality$Cycle.based)
 
 
 
@@ -1365,6 +1370,7 @@ df_survivaldata$p_cycle_mortality_BSC[which(df_survivaldata$Age >= 100)] <- 1
 # Set the first cycle's mortality probability to 0 (baseline)
 df_survivaldata$p_cycle_mortality_BSC[1] <- 0
 
+df_survivaldata$p_cycle_mortality_BSC <- pmax(df_survivaldata$p_cycle_mortality_BSC, general_mortality$Cycle.based)
 
 
 
@@ -1403,10 +1409,12 @@ df_FEV1trajectory <- df_FEV1trajectory %>%
     Belumosudil.arm.2L.BSC = rep(NA, nrow(df_FEV1trajectory)), # Second-line treatment after Belumosudil, switching to BSC
     Belumosudil.arm.newly.2L.BSC = rep(NA, nrow(df_FEV1trajectory)), # Newly on BSC, Second-line treatment after Belumosudil
     Belumosudil.arm.LTx = rep(NA, nrow(df_FEV1trajectory)),  # Transition to lung transplant (LTx) under Belumosudil treatment
+    Belumosudil.arm.newly.LTx = rep(NA, nrow(df_FEV1trajectory)), #Newly on LTx Belumosudil
     Belumosudil.arm.Dead = rep(NA, nrow(df_FEV1trajectory)), # Death under Belumosudil treatment
     BSC.arm = rep(NA, nrow(df_FEV1trajectory)),              # Best Supportive of Care (BSC) treatment
-    BSC.arm.2L = rep(0, nrow(df_FEV1trajectory)),              # Best Supportive of Care (BSC) treatment 2L
+    BSC.arm.2L = rep(0, nrow(df_FEV1trajectory)),            # Best Supportive of Care (BSC) treatment 2L
     BSC.arm.LTx = rep(NA, nrow(df_FEV1trajectory)),          # Transition to lung transplant (LTx) under BSC treatment
+    BSC.arm.newly.LTx = rep(NA, nrow(df_FEV1trajectory)),    # Newly on LTx BSC
     BSC.arm.Dead = rep(NA, nrow(df_FEV1trajectory))          # Death under BSC treatment
   )
 
@@ -1415,9 +1423,11 @@ df_FEV1trajectory$Belumosudil.arm.1L[1] <- 1     # Start with all patients in fi
 df_FEV1trajectory$Belumosudil.arm.2L.BSC[1] <- 0 # No patients initially in second-line treatment
 df_FEV1trajectory$Belumosudil.arm.newly.2L.BSC[1] <- 0 
 df_FEV1trajectory$Belumosudil.arm.LTx[1] <- 0    # No patients initially in the lung transplant group
+df_FEV1trajectory$Belumosudil.arm.newly.LTx[1] <- 0 
 df_FEV1trajectory$Belumosudil.arm.Dead[1] <- 0   # No patients initially deceased
 df_FEV1trajectory$BSC.arm[1] <- 1                # All patients start in BSC for this arm
 df_FEV1trajectory$BSC.arm.LTx[1] <- 0            # No patients initially in lung transplant group under BSC
+df_FEV1trajectory$BSC.arm.newly.LTx[1] <- 0            
 df_FEV1trajectory$BSC.arm.Dead[1] <- 0           # No patients initially deceased in BSC arm
 
 # Loop through each subsequent row to calculate transitions
@@ -1455,6 +1465,14 @@ for (i in 2:nrow(df_FEV1trajectory)) {
     df_FEV1trajectory$Belumosudil.arm.LTx[i - 1] *
     (1 - df_survivaldata$p_cycle_mortality_LTx[i])           # Survives this cycle after lung transplant
   
+  # Transition probabilities for Belumosudil.arm.newly.LTx
+  df_FEV1trajectory$Belumosudil.arm.newly.LTx[i] <- df_FEV1trajectory$Belumosudil.arm.1L[i-1]*
+    (1 - df_survivaldata$p_cycle_mortality_belumosudil[i] ) *
+    df_FEV1trajectory$probability_LTx_belumosudil +
+    df_FEV1trajectory$Belumosudil.arm.2L.BSC[i-1]*
+    (1 - df_survivaldata$p_cycle_mortality_BSC[i]) * 
+    df_FEV1trajectory$probability_LTx_BSC[i]
+  
   # Transition probabilities for Belumosudil.arm.Dead (death probabilities)
   df_FEV1trajectory$Belumosudil.arm.Dead[i] <- df_FEV1trajectory$Belumosudil.arm.Dead[i - 1] + 
     df_FEV1trajectory$Belumosudil.arm.1L[i - 1] *
@@ -1477,6 +1495,11 @@ for (i in 2:nrow(df_FEV1trajectory)) {
     (1 - df_survivaldata$p_cycle_mortality_BSC[i]) +         # Survives this cycle
     df_FEV1trajectory$BSC.arm.LTx[i - 1] *
     (1 - df_survivaldata$p_cycle_mortality_LTx[i])           # Survives post lung transplant
+  
+  # Transition probabilities for Belumosudil.arm.newly.LTx
+  df_FEV1trajectory$BSC.arm.newly.LTx[i] <- df_FEV1trajectory$BSC.arm[i-1]*
+    ( 1 - df_survivaldata$p_cycle_mortality_BSC[i] )*
+    df_FEV1trajectory$probability_LTx_BSC[i]
   
   # Transition probabilities for BSC.arm.Dead (death probabilities)
   df_FEV1trajectory$BSC.arm.Dead[i] <- df_FEV1trajectory$BSC.arm[i - 1] *
@@ -2302,6 +2325,7 @@ health.state.cost_LTx <- mean(c(health.state.cost_clad2_BSC,
 ))
 
 
+
 belumosudil.1L.drug.costs <- rep(NA, nrow(df_FEV1trajectory))
 belumosudil.1L.drug.costs[1] <- df_FEV1trajectory$Belumosudil.arm.1L[1] * drug_cost_first_cycle_belumosudil
 belumosudil.1L.drug.costs[2] <- df_FEV1trajectory$Belumosudil.arm.1L[2] * drug_cost_cycle_2_belumosudil
@@ -2312,19 +2336,24 @@ belumosudil.2L.drug.costs[1] <- df_FEV1trajectory$Belumosudil.arm.2L.BSC[1] * dr
 belumosudil.2L.drug.costs[2] <- df_FEV1trajectory$Belumosudil.arm.2L.BSC[2] * drug_cost_cycle_2_BSC
 belumosudil.2L.drug.costs[3:nrow(df_FEV1trajectory)] <- df_FEV1trajectory$Belumosudil.arm.2L.BSC[3:nrow(df_FEV1trajectory)] * drug_cost_subsequent_cycles_BSC
 
+belumosudil.LTx.drug.costs <- df_FEV1trajectory$Belumosudil.arm.newly.LTx*one.off_cost_LTx
+
 BSC.drug.costs <- rep(NA, nrow(df_FEV1trajectory))
 BSC.drug.costs[1] <- df_FEV1trajectory$BSC.arm[1] * drug_cost_first_cycle_BSC
 BSC.drug.costs[2] <- df_FEV1trajectory$BSC.arm[2] * drug_cost_cycle_2_BSC
 BSC.drug.costs[3:nrow(df_FEV1trajectory)] <- df_FEV1trajectory$BSC.arm[3:nrow(df_FEV1trajectory)] * drug_cost_subsequent_cycles_BSC
 
+BSC.LTx.drug.costs <- df_FEV1trajectory$BSC.arm.newly.LTx*one.off_cost_LTx
 
 df_costs_payoffs <- data.frame(
   
   Belumosudil.1L.drug.costs = belumosudil.1L.drug.costs,
   Belumosudil.2L.drug.costs = belumosudil.2L.drug.costs,
-  Total.Belumosudil.drug.costs = rowSums(cbind(belumosudil.1L.drug.costs,belumosudil.2L.drug.costs )),
+  Belumosudil.LTx.drug.costs = belumosudil.LTx.drug.costs,
+  Total.Belumosudil.drug.costs = rowSums(cbind(belumosudil.1L.drug.costs,belumosudil.2L.drug.costs, belumosudil.LTx.drug.costs )),
   BSC.arm.drug.costs = BSC.drug.costs,
-  Total.BSC.drug.costs = BSC.drug.costs
+  BSC.LTx.arm.drug.costs = BSC.LTx.drug.costs,
+  Total.BSC.drug.costs = rowSums(cbind(BSC.drug.costs, BSC.LTx.drug.costs))
   
 )
 
@@ -2602,104 +2631,115 @@ AE_total.cost_BSC <- c(AE_cost_BSC*df_FEV1trajectory$Belumosudil.arm.1L[1],
 
 df_payoffs_undiscounted_belumosudil <- data.frame(
   
-  LYs.CLAD1 = LYs_Belumosudil_clad1,
-  LYs.CLAD2 = LYs_Belumosudil_clad2,
-  LYs.CLAD3 = LYs_Belumosudil_clad3,
-  LYs.CLAD4 = LYs_Belumosudil_clad4,
-  LYs.Re.LTx = LYs_Belumosudil_LTx,
+  LYs.CLAD1 = LYs_Belumosudil_clad1/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  LYs.CLAD2 = LYs_Belumosudil_clad2/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  LYs.CLAD3 = LYs_Belumosudil_clad3/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  LYs.CLAD4 = LYs_Belumosudil_clad4/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  LYs.Re.LTx = LYs_Belumosudil_LTx/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
   
-  Total.LYs = rowSums(cbind(LYs_Belumosudil_clad1, LYs_Belumosudil_clad2, LYs_Belumosudil_clad3,
-                            LYs_Belumosudil_clad4 , LYs_Belumosudil_LTx)),
+  Total.LYs = ( rowSums(cbind(LYs_Belumosudil_clad1, LYs_Belumosudil_clad2, LYs_Belumosudil_clad3,
+                            LYs_Belumosudil_clad4 , LYs_Belumosudil_LTx)) ) /((1+dr_outcomes)^(floor(df_survivaldata$Year))),
   
-  QALYs.CLAD1 =  QALYs_Belumosudil_clad1,
-  QALYs.CLAD2 =  QALYs_Belumosudil_clad2,
-  QALYs.CLAD3 =  QALYs_Belumosudil_clad3,
-  QALYs.CLAD4 =  QALYs_Belumosudil_clad4,
-  QALYs.Re.LTx = QALYs_Belumosudil_LTx,
-  AE_disutility = AE_disutility_belumosudil,
+  QALYs.CLAD1 =  QALYs_Belumosudil_clad1/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  QALYs.CLAD2 =  QALYs_Belumosudil_clad2/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  QALYs.CLAD3 =  QALYs_Belumosudil_clad3/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  QALYs.CLAD4 =  QALYs_Belumosudil_clad4/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  QALYs.Re.LTx = QALYs_Belumosudil_LTx/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  AE_disutility = AE_disutility_belumosudil/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
   
-  Total.QALYs = df_outcomes_payoffs$QALYs.Belumosudil.undiscounted,
-  FEV1.Based.QALYs = df_outcomes_payoffs$QALYs.Belumosudil.undiscounted,
+  Total.QALYs = df_outcomes_payoffs$QALYs.Belumosudil.undiscounted/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  FEV1.Based.QALYs = df_outcomes_payoffs$QALYs.Belumosudil.undiscounted/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
   
-  Drug.Costs.1L = df_costs_payoffs$Belumosudil.1L.drug.costs,
-  Drug.Costs.2L = df_costs_payoffs$Belumosudil.2L.drug.costs,
+  Drug.Costs.1L = df_costs_payoffs$Belumosudil.1L.drug.costs/((1+dr_cost)^(floor(df_survivaldata$Year))),
+  Drug.Costs.2L = df_costs_payoffs$Belumosudil.2L.drug.costs/((1+dr_cost)^(floor(df_survivaldata$Year))),
   
-  Total.Drug.Costs = df_costs_payoffs$Total.Belumosudil.drug.costs,
+  Total.Drug.Costs = df_costs_payoffs$Total.Belumosudil.drug.costs/((1+dr_cost)^(floor(df_survivaldata$Year))),
   
-  Health.State.Costs.CLAD1 = health.state.cost_clad1_belumosudil_undiscounted,
-  Health.State.Costs.CLAD2 = health.state.cost_clad2_belumosudil_undiscounted,
-  Health.State.Costs.CLAD3 = health.state.cost_clad3_belumosudil_undiscounted,
-  Health.State.Costs.CLAD4 = health.state.cost_clad4_belumosudil_undiscounted,
-  Health.State.Costs.Re.LTx = health.state.cost_LTx_belumosudil_undiscounted,
+  Health.State.Costs.CLAD1 = health.state.cost_clad1_belumosudil_undiscounted/((1+dr_cost)^(floor(df_survivaldata$Year))),
+  Health.State.Costs.CLAD2 = health.state.cost_clad2_belumosudil_undiscounted/((1+dr_cost)^(floor(df_survivaldata$Year))),
+  Health.State.Costs.CLAD3 = health.state.cost_clad3_belumosudil_undiscounted/((1+dr_cost)^(floor(df_survivaldata$Year))),
+  Health.State.Costs.CLAD4 = health.state.cost_clad4_belumosudil_undiscounted/((1+dr_cost)^(floor(df_survivaldata$Year))),
+  Health.State.Costs.Re.LTx = health.state.cost_LTx_belumosudil_undiscounted/((1+dr_cost)^(floor(df_survivaldata$Year))),
   
-  Total.Health.State.Cost = rowSums(cbind(health.state.cost_clad1_belumosudil_undiscounted,
+  Total.Health.State.Cost = ( rowSums(cbind(health.state.cost_clad1_belumosudil_undiscounted,
                                           health.state.cost_clad2_belumosudil_undiscounted,
                                           health.state.cost_clad3_belumosudil_undiscounted,
                                           health.state.cost_clad4_belumosudil_undiscounted,
-                                          health.state.cost_LTx_belumosudil_undiscounted)),
+                                          health.state.cost_LTx_belumosudil_undiscounted)) ) /((1+dr_cost)^(floor(df_survivaldata$Year))),
                                     
-  AE.Costs = AE_total.cost_belumosudil
+  AE.Costs = AE_total.cost_belumosudil/((1+dr_cost)^(floor(df_survivaldata$Year)))
   
 )
 
 
 df_payoffs_undiscounted_BSC <- data.frame(
   
-  LYs.CLAD1 = LYs_BSC_clad1,
-  LYs.CLAD2 = LYs_BSC_clad2,
-  LYs.CLAD3 = LYs_BSC_clad3,
-  LYs.CLAD4 = LYs_BSC_clad4,
-  LYs.Re.LTx = LYs_BSC_LTx,
+  LYs.CLAD1 = LYs_BSC_clad1/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  LYs.CLAD2 = LYs_BSC_clad2/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  LYs.CLAD3 = LYs_BSC_clad3/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  LYs.CLAD4 = LYs_BSC_clad4/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  LYs.Re.LTx = LYs_BSC_LTx/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
   
-  Total.LYs = rowSums(cbind(LYs_BSC_clad1, LYs_BSC_clad2, LYs_BSC_clad3,
-                            LYs_BSC_clad4 , LYs_BSC_LTx)),
+  Total.LYs = ( rowSums(cbind(LYs_BSC_clad1, LYs_BSC_clad2, LYs_BSC_clad3,
+                            LYs_BSC_clad4 , LYs_BSC_LTx)) ) /((1+dr_outcomes)^(floor(df_survivaldata$Year))),
   
-  QALYs.CLAD1 =  QALYs_BSC_clad1,
-  QALYs.CLAD2 =  QALYs_BSC_clad2,
-  QALYs.CLAD3 =  QALYs_BSC_clad3,
-  QALYs.CLAD4 =  QALYs_BSC_clad4,
-  QALYs.Re.LTx = QALYs_BSC_LTx,
-  AE_disutility = AE_disutility_BSC,
+  QALYs.CLAD1 =  QALYs_BSC_clad1/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  QALYs.CLAD2 =  QALYs_BSC_clad2/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  QALYs.CLAD3 =  QALYs_BSC_clad3/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  QALYs.CLAD4 =  QALYs_BSC_clad4/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  QALYs.Re.LTx = QALYs_BSC_LTx/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  AE_disutility = AE_disutility_BSC/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
   
-  Total.QALYs = df_outcomes_payoffs$QALYs.BSC.undiscounted,
-  FEV1.Based.QALYs = df_outcomes_payoffs$QALYs.BSC.undiscounted,
+  Total.QALYs = df_outcomes_payoffs$QALYs.BSC.undiscounted/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
+  FEV1.Based.QALYs = df_outcomes_payoffs$QALYs.BSC.undiscounted/((1+dr_outcomes)^(floor(df_survivaldata$Year))),
   
-  Drug.Costs = df_costs_payoffs$BSC.arm.drug.costs,
+  Drug.Costs = df_costs_payoffs$BSC.arm.drug.costs/((1+dr_cost)^(floor(df_survivaldata$Year))),
 
-  Total.Drug.Costs = df_costs_payoffs$Total.BSC.drug.costs,
+  Total.Drug.Costs = df_costs_payoffs$Total.BSC.drug.costs/((1+dr_cost)^(floor(df_survivaldata$Year))),
   
-  Health.State.Costs.CLAD1 = health.state.cost_clad1_BSC_undiscounted,
-  Health.State.Costs.CLAD2 = health.state.cost_clad2_BSC_undiscounted,
-  Health.State.Costs.CLAD3 = health.state.cost_clad3_BSC_undiscounted,
-  Health.State.Costs.CLAD4 = health.state.cost_clad4_BSC_undiscounted,
-  Health.State.Costs.Re.LTx = health.state.cost_LTx_BSC_undiscounted,
+  Health.State.Costs.CLAD1 = health.state.cost_clad1_BSC_undiscounted/((1+dr_cost)^(floor(df_survivaldata$Year))),
+  Health.State.Costs.CLAD2 = health.state.cost_clad2_BSC_undiscounted/((1+dr_cost)^(floor(df_survivaldata$Year))),
+  Health.State.Costs.CLAD3 = health.state.cost_clad3_BSC_undiscounted/((1+dr_cost)^(floor(df_survivaldata$Year))),
+  Health.State.Costs.CLAD4 = health.state.cost_clad4_BSC_undiscounted/((1+dr_cost)^(floor(df_survivaldata$Year))),
+  Health.State.Costs.Re.LTx = health.state.cost_LTx_BSC_undiscounted/((1+dr_cost)^(floor(df_survivaldata$Year))),
   
-  Total.Health.State.Cost = rowSums(cbind(health.state.cost_clad1_BSC_undiscounted,
+  Total.Health.State.Cost = ( rowSums(cbind(health.state.cost_clad1_BSC_undiscounted,
                                           health.state.cost_clad2_BSC_undiscounted,
                                           health.state.cost_clad3_BSC_undiscounted,
                                           health.state.cost_clad4_BSC_undiscounted,
-                                          health.state.cost_LTx_BSC_undiscounted)),
+                                          health.state.cost_LTx_BSC_undiscounted)) ) /((1+dr_cost)^(floor(df_survivaldata$Year))),
   
-  AE.Costs = AE_total.cost_BSC
+  AE.Costs = AE_total.cost_BSC/((1+dr_cost)^(floor(df_survivaldata$Year)))
   
 )
 
 
 
-deterministic_results <- data.frame(
+df_deterministic_results <- data.frame(
   
   Treatment = c("Belumosudil plus BSC", "BSC alone"),
   
   Total.Cost = c(sum(sum(df_payoffs_undiscounted_belumosudil$Total.Drug.Costs), sum(df_payoffs_undiscounted_belumosudil$Total.Health.State.Cost), sum(df_payoffs_undiscounted_belumosudil$AE.Costs)), 
                  sum(sum(df_payoffs_undiscounted_BSC$Total.Drug.Costs), sum(df_payoffs_undiscounted_BSC$Total.Health.State.Cost), sum(df_payoffs_undiscounted_BSC$AE.Costs))),
-  Incr.Cost = c(NA, sum(df_payoffs_undiscounted_belumosudil$Total.Drug.Costs)- sum(df_payoffs_undiscounted_BSC$Total.Drug.Costs)),
+  Incr.Cost = c(NA, sum(sum(df_payoffs_undiscounted_belumosudil$Total.Drug.Costs), sum(df_payoffs_undiscounted_belumosudil$Total.Health.State.Cost), sum(df_payoffs_undiscounted_belumosudil$AE.Costs))- 
+                  sum(sum(df_payoffs_undiscounted_BSC$Total.Drug.Costs), sum(df_payoffs_undiscounted_BSC$Total.Health.State.Cost), sum(df_payoffs_undiscounted_BSC$AE.Costs))),
   
   Total.QALYs = c(sum(df_payoffs_undiscounted_belumosudil$Total.QALYs), sum(df_payoffs_undiscounted_BSC$Total.QALYs)),
   Incr.QALYs = c(NA, sum(df_payoffs_undiscounted_belumosudil$Total.QALYs)- sum(df_payoffs_undiscounted_BSC$Total.QALYs)),
   
   Total.LYs = c(sum(df_payoffs_undiscounted_belumosudil$Total.LYs), sum(df_payoffs_undiscounted_BSC$Total.LYs)),
-  Incr.LYs = c(NA, sum(df_payoffs_undiscounted_belumosudil$Total.LYs) - sum(df_payoffs_undiscounted_BSC$Total.LYs))
+  Incr.LYs = c(NA, sum(df_payoffs_undiscounted_belumosudil$Total.LYs) - sum(df_payoffs_undiscounted_BSC$Total.LYs)),
   
+  ICER.Cost.QALYs = c(NA, 
+                     ( sum(sum(df_payoffs_undiscounted_belumosudil$Total.Drug.Costs), sum(df_payoffs_undiscounted_belumosudil$Total.Health.State.Cost), sum(df_payoffs_undiscounted_belumosudil$AE.Costs))- 
+                         sum(sum(df_payoffs_undiscounted_BSC$Total.Drug.Costs), sum(df_payoffs_undiscounted_BSC$Total.Health.State.Cost), sum(df_payoffs_undiscounted_BSC$AE.Costs)) ) / 
+                       ( sum(df_payoffs_undiscounted_belumosudil$Total.QALYs)- sum(df_payoffs_undiscounted_BSC$Total.QALYs) )
+  ),
+  
+  ICER.Cost.LYs = c(NA, 
+                      ( sum(sum(df_payoffs_undiscounted_belumosudil$Total.Drug.Costs), sum(df_payoffs_undiscounted_belumosudil$Total.Health.State.Cost), sum(df_payoffs_undiscounted_belumosudil$AE.Costs))- 
+                          sum(sum(df_payoffs_undiscounted_BSC$Total.Drug.Costs), sum(df_payoffs_undiscounted_BSC$Total.Health.State.Cost), sum(df_payoffs_undiscounted_BSC$AE.Costs)) ) / ( sum(df_payoffs_undiscounted_belumosudil$Total.LYs)- sum(df_payoffs_undiscounted_BSC$Total.LYs) )
+  )
   
   
 )
