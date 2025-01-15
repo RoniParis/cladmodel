@@ -1,1134 +1,641 @@
 library(dplyr)
 library(readxl)
 library(heemod)
-#' Cost-Effectiveness Model for CLAD
-#'
-#' This function implements a cost-effectiveness model for chronic lung allograft dysfunction (CLAD). 
-#' It evaluates various parameters related to disease progression, survival, and treatment effects 
-#' to calculate outcomes and costs over a specified time horizon.
-#' 
-#' @section General Settings : 
-#' 
-#' @param time_horizon Time horizon for the analysis, in years. Default is 50 years.
-#' @param dr_cost Discount rate for costs. Default is 0.035.
-#' @param dr_outcomes Discount rate for health outcomes. Default is 0.035.
-#' @param wtp_threshold Willingness-to-pay threshold, in monetary units. Default is 30000.
-#' 
-#' @section Patient Population Characteristics: 
-#' 
-#' @param mean_age Average age of the patient population. Default is 56 years.
-#' @param female_percentage Proportion of female patients in the population. Default is 0.43.
-#' @param mean_weight Average weight of the patient population, in kilograms. Default is 82 kg.
-#' 
-#' @section Disease Incidence Probabilities: 
-#' 
-#' @param p_incidence_BOS Probability of BOS phenotype occurrence. Default is 0.875.
-#' @param p_incidence_RAS Probability of RAS phenotype occurrence. Default is 0.125.
-#' 
-#' @section Baseline Characteristics (FEV1): 
-#' 
-#' @param n_baseline.clad Initial CLAD stage at baseline. Default is 1.
-#' @param n_baselineFEV1_BOS Baseline FEV1 value for BOS patients, in mL. Default is 2000 mL.
-#' @param n_baselineFEV1_RAS Baseline FEV1 value for RAS patients, in mL. Default is 1520 mL.
-#' 
-#' @section Annual FEV1 Decline Rates: 
-#' 
-#' @param n_declineFEV1.year1_BOS Annual FEV1 decline rate for BOS patients during the first year, in mL/year. Default is 25.556 mL/year.
-#' @param n_declineFEV1.year1_RAS Annual FEV1 decline rate for RAS patients during the first year, in mL/year. Default is 21.944 mL/year.
-#' @param n_declineFEV1.subsequent_BOS Annual FEV1 decline rate for BOS patients in subsequent years, in mL/year. Default is 25.556 mL/year.
-#' @param n_declineFEV1.subsequent_RAS Annual FEV1 decline rate for RAS patients in subsequent years, in mL/year. Default is 21.944 mL/year.
-#' @param rr_decline_belumosudil_BOS Relative risk reduction in FEV1 decline for BOS patients treated with Belumosudil. Default is 0.27.
-#' @param rr_decline_belumosudil_RAS Relative risk reduction in FEV1 decline for RAS patients treated with Belumosudil. Default is 0.27.
-#' 
-#' @section Survival Analysis Parameters: 
-#' 
-#' @param survival_function Type of survival distribution used in the model. Default is "Log-normal".
-#' @param hr_belumosudil Hazard ratio for Belumosudil treatment. Default is 0.73.
-#' @param hr_clad1 Hazard ratio for CLAD stage 1. Default is 0.8.
-#' @param hr_clad2 Hazard ratio for CLAD stage 2. Default is 1.
-#' @param hr_clad3 Hazard ratio for CLAD stage 3. Default is 1.5.
-#' @param hr_clad4 Hazard ratio for CLAD stage 4. Default is 3.
-#' 
-#' @section Lung Transplantation (LTx) Probabilities: 
-#' 
-#' @param p_LTx_clad1_belumosudil Probability of lung transplantation at CLAD stage 1 under Belumosudil treatment. Default is 0.
-#' @param p_LTx_clad2_belumosudil Probability of lung transplantation at CLAD stage 2 under Belumosudil treatment. Default is 0.0000387.
-#' @param p_LTx_clad3_belumosudil Probability of lung transplantation at CLAD stage 3 under Belumosudil treatment. Default is 0.0000387.
-#' @param p_LTx_clad4_belumosudil Probability of lung transplantation at CLAD stage 4 under Belumosudil treatment. Default is 0.0000387.
-#' @param p_LTx_clad1_BSC Probability of lung transplantation at CLAD stage 1 under best supportive care. Default is 0.
-#' @param p_LTx_clad2_BSC Probability of lung transplantation at CLAD stage 2 under best supportive care. Default is 0.0000387.
-#' @param p_LTx_clad3_BSC Probability of lung transplantation at CLAD stage 3 under best supportive care. Default is 0.0000387.
-#' @param p_LTx_clad4_BSC Probability of lung transplantation at CLAD stage 4 under best supportive care. Default is 0.0000387.
-#' 
-#' @section Stop Rule Probabilities (for different Clad levels): 
-#' 
-#' @param p_stoprule_clad1 Probability of applying the stop rule at CLAD stage 1. Default is 0.
-#' @param p_stoprule_clad2 Probability of applying the stop rule at CLAD stage 2. Default is 0.
-#' @param p_stoprule_clad3 Probability of applying the stop rule at CLAD stage 3. Default is 0.
-#' @param p_stoprule_clad4 Probability of applying the stop rule at CLAD stage 4. Default is 1.
-#' 
-#' @section Discontinuation Rate for Belumosudil: 
-#' 
-#' @param p_disc_belumosudil Probability of discontinuing Belumosudil treatment. Default is 0.0119.
-#' 
-#' @section Adverse Event (AE): 
-#' **Adverse Events probabilities**
-#' @param p_AE_managed.outpatient Proportion of adverse events (AEs) managed in an outpatient setting. Default is 1 (all AEs managed outpatient).
-#'
-#' @param p_AE_pneumonia_belumosudil Probability of pneumonia as an AE for patients treated with Belumosudil. Default is 0.003576921.
-#' @param p_AE_hypertension_belumosudil Probability of hypertension as an AE for patients treated with Belumosudil. Default is 0.003576921.
-#' @param p_AE_anaemia_belumosudil Probability of anaemia as an AE for patients treated with Belumosudil. Default is 0.002039584.
-#' @param p_AE_thrombocytopenia_belumosudil Probability of thrombocytopenia as an AE for patients treated with Belumosudil. Default is 0.001540479.
-#' @param p_AE_hyperglycaemia_belumosudil Probability of hyperglycaemia as an AE for patients treated with Belumosudil. Default is 0.002579999.
-#' @param p_AE_GGT_increased_belumosudil Probability of increased GGT as an AE for patients treated with Belumosudil. Default is 0.002579999.
-#' @param p_AE_diarrhoea_belumosudil Probability of diarrhoea as an AE for patients treated with Belumosudil. Default is 0.
-#' @param p_AE_AE8_belumosudil Placeholder for additional AE8 probability for patients treated with Belumosudil. Default is 0.
-#' @param p_AE_AE9_belumosudil Placeholder for additional AE9 probability for patients treated with Belumosudil. Default is 0.
-#' @param p_AE_AE10_belumosudil Placeholder for additional AE10 probability for patients treated with Belumosudil. Default is 0.
-#' @param p_AE_AE11_belumosudil Placeholder for additional AE11 probability for patients treated with Belumosudil. Default is 0.
-#'
-#' @param p_AE_pneumonia_BSC Probability of pneumonia as an AE for patients under Best Supportive Care (BSC). Default is 0.016995273.
-#' @param p_AE_hypertension_BSC Probability of hypertension as an AE for patients under BSC. Default is 0.012491647.
-#' @param p_AE_anaemia_BSC Probability of anaemia as an AE for patients under BSC. Default is 0.013619484.
-#' @param p_AE_thrombocytopenia_BSC Probability of thrombocytopenia as an AE for patients under BSC. Default is 0.018117967.
-#' @param p_AE_hyperglycaemia_BSC Probability of hyperglycaemia as an AE for patients under BSC. Default is 0.0034224.
-#' @param p_AE_GGT_increased_BSC Probability of increased GGT as an AE for patients under BSC. Default is 0.0034224.
-#' @param p_AE_diarrhoea_BSC Probability of diarrhoea as an AE for patients under BSC. Default is 0.002282904.
-#' @param p_AE_AE8_BSC Placeholder for additional AE8 probability for patients under BSC. Default is 0.
-#' @param p_AE_AE9_BSC Placeholder for additional AE9 probability for patients under BSC. Default is 0.
-#' @param p_AE_AE10_BSC Placeholder for additional AE10 probability for patients under BSC. Default is 0.
-#' @param p_AE_AE11_BSC Placeholder for additional AE11 probability for patients under BSC. Default is 0.
-#' **Unit Costs for Outpatient Management of AEs**
-#' @param c_AE_pneumonia_outpatient Cost for managing pneumonia in an outpatient setting. Default is 371.768.
-#' @param c_AE_hypertension_outpatient Cost for managing hypertension in an outpatient setting. Default is 447.730.
-#' @param c_AE_anaemia_outpatient Cost for managing anaemia in an outpatient setting. Default is 394.642.
-#' @param c_AE_thrombocytopenia_outpatient Cost for managing thrombocytopenia in an outpatient setting. Default is 442.712.
-#' @param c_AE_hyperglycaemia_outpatient Cost for managing hyperglycaemia in an outpatient setting. Default is 485.777.
-#' @param c_AE_GGT_increased_outpatient Cost for managing increased GGT levels in an outpatient setting. Default is 485.777.
-#' @param c_AE_diarrhoea_outpatient Cost for managing diarrhoea in an outpatient setting. Default is 388.046.
-#' @param c_AE_AE8_outpatient Placeholder for AE8 outpatient management cost. Default is 0.
-#' @param c_AE_AE9_outpatient Placeholder for AE9 outpatient management cost. Default is 0.
-#' @param c_AE_AE10_outpatient Placeholder for AE10 outpatient management cost. Default is 0.
-#' @param c_AE_AE11_outpatient Placeholder for AE11 outpatient management cost. Default is 0.
-#'**Unit Costs for Inpatient Management of AEs**
-#' @param c_AE_pneumonia_inpatient Cost for managing pneumonia in an inpatient setting. Default is 3344.581.
-#' @param c_AE_hypertension_inpatient Cost for managing hypertension in an inpatient setting. Default is 1478.830.
-#' @param c_AE_anaemia_inpatient Cost for managing anaemia in an inpatient setting. Default is 1371.608.
-#' @param c_AE_thrombocytopenia_inpatient Cost for managing thrombocytopenia in an inpatient setting. Default is 1972.554.
-#' @param c_AE_hyperglycaemia_inpatient Cost for managing hyperglycaemia in an inpatient setting. Default is 767.985.
-#' @param c_AE_GGT_increased_inpatient Cost for managing increased GGT levels in an inpatient setting. Default is 767.985.
-#' @param c_AE_diarrhoea_inpatient Cost for managing diarrhoea in an inpatient setting. Default is 3484.009.
-#' @param c_AE_AE8_inpatient Placeholder for AE8 inpatient management cost. Default is 0.
-#' @param c_AE_AE9_inpatient Placeholder for AE9 inpatient management cost. Default is 0.
-#' @param c_AE_AE10_inpatient Placeholder for AE10 inpatient management cost. Default is 0.
-#' @param c_AE_AE11_inpatient Placeholder for AE11 inpatient management cost. Default is 0.
-#' 
-#' @section Utility: 
-#' 
-#'
-#' @param health_utility_method Character. Method used to estimate health utility. Options include:
-#'   \itemize{
-#'     \item `"SGRQ based (CLAD)"`: Based on SGRQ scores for CLAD stages.
-#'     \item `"CLAD (GOLD) stage-based COPD as proxy"`: Based on GOLD staging for COPD.
-#'     \item `"FEV1 based (COPD as proxy)"`: Based on FEV1 reductions as a proxy for COPD utility.
-#'   }
-#' 
-#' @param health_state_utility_source Character. Source of utility data for health states. Examples:
-#'   \itemize{
-#'     \item `"Esquinas et al. (2020)"` 
-#'     \item `"Pickard et al. (2011)"` (UK/US indices).
-#'   }
-#'
-#' @param include.utility.adjustment Character. Whether to include utility adjustments (`"Yes"` or `"No"`).
-#' @param include_AE_disutility Character. Whether to include disutility related to adverse events (`"Include"` or `"Exclude"`).
-#'
-#' @param SGRQ_clad0 Numeric. SGRQ score for CLAD stage 0.
-#' @param SGRQ_clad1 Numeric. SGRQ score for CLAD stage 1.
-#' @param SGRQ_clad2 Numeric. SGRQ score for CLAD stage 2.
-#' @param SGRQ_clad3 Numeric. SGRQ score for CLAD stage 3.
-#' @param SGRQ_clad4 Numeric. SGRQ score for CLAD stage 4.
-#' @param SGRQ_LTx Numeric. SGRQ score for Lung Transplant (LTx).
-#'
-#' @param FEV1_baseline_utility Numeric. Baseline utility for FEV1 in the model.
-#' @param disutility_by_percent_reduction_FEV1 Numeric. Disutility per percentage reduction in FEV1.
-#'
-#' @param utility_clad0_stage.based_Esquinas.source Numeric. Utility for CLAD stage 0 (Esquinas et al.).
-#' @param utility_clad1_stage.based_Esquinas.source Numeric. Utility for CLAD stage 1 (Esquinas et al.).
-#' @param utility_clad2_stage.based_Esquinas.source Numeric. Utility for CLAD stage 2 (Esquinas et al.).
-#' @param utility_clad3_stage.based_Esquinas.source Numeric. Utility for CLAD stage 3 (Esquinas et al.).
-#' @param utility_clad4_stage.based_Esquinas.source Numeric. Utility for CLAD stage 4 (Esquinas et al.).
-#' @param utility_LTx_stage.based_Esquinas.source Numeric. Utility for Lung Transplant (LTx, Esquinas et al.).
-#'
-#' @param utility_clad0_stage.based_Pickard.UK.source Numeric. Utility for CLAD stage 0 (Pickard et al., UK index).
-#' @param utility_clad1_stage.based_Pickard.UK.source Numeric. Utility for CLAD stage 1 (Pickard et al., UK index).
-#' @param utility_clad2_stage.based_Pickard.UK.source Numeric. Utility for CLAD stage 2 (Pickard et al., UK index).
-#' @param utility_clad3_stage.based_Pickard.UK.source Numeric. Utility for CLAD stage 3 (Pickard et al., UK index).
-#' @param utility_clad4_stage.based_Pickard.UK.source Numeric. Utility for CLAD stage 4 (Pickard et al., UK index).
-#' @param utility_LTx_stage.based_Pickard.UK.source Numeric. Utility for Lung Transplant (LTx, Pickard et al., UK index).
-#'
-#' @param utility_clad0_stage.based_Pickard.US.source Numeric. Utility for CLAD stage 0 (Pickard et al., US index).
-#' @param utility_clad1_stage.based_Pickard.US.source Numeric. Utility for CLAD stage 1 (Pickard et al., US index).
-#' @param utility_clad2_stage.based_Pickard.US.source Numeric. Utility for CLAD stage 2 (Pickard et al., US index).
-#' @param utility_clad3_stage.based_Pickard.US.source Numeric. Utility for CLAD stage 3 (Pickard et al., US index).
-#' @param utility_clad4_stage.based_Pickard.US.source Numeric. Utility for CLAD stage 4 (Pickard et al., US index).
-#' @param utility_LTx_stage.based_Pickard.US.source Numeric. Utility for Lung Transplant (LTx, Pickard et al., US index).
-#'
-#' @param disutility_pneumonia Numeric. Disutility for pneumonia.
-#' @param disutility_hypertension Numeric. Disutility for hypertension.
-#' @param disutility_anaemia Numeric. Disutility for anaemia.
-#' @param disutility_thrombocytopenia Numeric. Disutility for thrombocytopenia.
-#' @param disutility_hyperglycaemia Numeric. Disutility for hyperglycaemia.
-#' @param disutility_GGT_increased Numeric. Disutility for increased GGT levels.
-#' @param disutility_diarrhoea Numeric. Disutility for diarrhoea.
-#' @param disutility_AE8 Numeric. Placeholder for additional AE disutility.
-#' @param disutility_AE9 Numeric. Placeholder for additional AE disutility.
-#' @param disutility_AE10 Numeric. Placeholder for additional AE disutility.
-#' @param disutility_AE11 Numeric. Placeholder for additional AE disutility.
-#'
-#' @param duration_days_pneumonia Numeric. Duration (days) for pneumonia.
-#' @param duration_days_hypertension Numeric. Duration (days) for hypertension.
-#' @param duration_days_anaemia Numeric. Duration (days) for anaemia.
-#' @param duration_days_thrombocytopenia Numeric. Duration (days) for thrombocytopenia.
-#' @param duration_days_hyperglycaemia Numeric. Duration (days) for hyperglycaemia.
-#' @param duration_days_GGT_increased Numeric. Duration (days) for increased GGT levels.
-#' @param duration_days_diarrhoea Numeric. Duration (days) for diarrhoea.
-#' @param duration_days_AE8 Numeric. Placeholder for duration (days) of AE8.
-#' @param duration_days_AE9 Numeric. Placeholder for duration (days) of AE9.
-#' @param duration_days_AE10 Numeric. Placeholder for duration (days) of AE10.
-#' @param duration_days_AE11 Numeric. Placeholder for duration (days) of AE11.
-#'
-#' @section Proton Pump Inhibitors (PPIs):
-#' 
-#' @param percentage_receiving_ppi Proportion of patients receiving proton pump inhibitors (PPIs). Default: 0.7.
-#'
-#' @section Drug Prices:
-#'
-#' **Belumosudil**
-#' @param generic_name_belumosudil Generic name of the drug. Default: "Belumosudil".
-#' @param brand_name_belumosudil Brand name of the drug. Default: "REZUROCK®".
-#' @param dose_form_belumosudil Dosage form (e.g., oral, IV). Default: "Oral".
-#' @param dose_mg_belumosudil Drug dose in milligrams. Default: 200.
-#' @param dosing_regimen_belumosudil Recommended dosing regimen. Default: "200 mg once daily".
-#' @param strength_per_unit_belumosudil Strength per unit (mg per tablet or capsule). Default: 200.
-#' @param pack_size_belumosudil Number of units in a pack. Default: 30.
-#' @param pack_price_belumosudil Price per pack in GBP. Default: £6708.
-#' @param pas_discount_belumosudil PAS (Patient Access Scheme) discount percentage. Default: 0%.
-#' @param absolute_reduction_belumosudil Absolute price reduction in GBP. Default: £0.
-#' @param discount_belumosudil Additional discount percentage. Default: 0%.
-#'
-#' **Azithromycin**
-#' @param generic_name_azithromycin Generic name of the drug. Default: "Azithromycin".
-#' @param brand_name_azithromycin Brand name. Default: "NR" (Not reported).
-#' @param dose_form_azithromycin Dosage form (e.g., oral). Default: "Oral".
-#' @param dose_mg_azithromycin Drug dose in milligrams. Default: 250.
-#' @param dosing_regimen_azithromycin Recommended dosing regimen. Default: "250 mg three times a week".
-#' @param strength_per_unit_azithromycin Strength per unit (mg per tablet). Default: 250.
-#' @param pack_size_azithromycin Number of units in a pack. Default: 4.
-#' @param pack_price_azithromycin Price per pack in GBP. Default: £0.94.
-#' @param pas_discount_azithromycin PAS discount percentage. Default: 0%.
-#' @param absolute_reduction_azithromycin Absolute price reduction in GBP. Default: £0.
-#' @param discount_azithromycin Additional discount percentage. Default: 0%.
-#'
-#' **Omeprazole (PPI)**
-#' @param generic_name_omeprazole Generic name of the drug. Default: "Omeprazole (PPI)".
-#' @param brand_name_omeprazole Brand name. Default: "NR".
-#' @param dose_form_omeprazole Dosage form (e.g., oral). Default: "Oral".
-#' @param dose_mg_omeprazole Drug dose in milligrams. Default: 20.
-#' @param dosing_regimen_omeprazole Recommended dosing regimen. Default: "20 mg once daily".
-#' @param strength_per_unit_omeprazole Strength per unit (mg per tablet). Default: 20.
-#' @param pack_size_omeprazole Number of units in a pack. Default: 28.
-#' @param pack_price_omeprazole Price per pack in GBP. Default: £6.16.
-#' @param pas_discount_omeprazole PAS discount percentage. Default: 0%.
-#' @param absolute_reduction_omeprazole Absolute price reduction in GBP. Default: £0.
-#' @param discount_omeprazole Additional discount percentage. Default: 0%.
-#'
-#' @section Number of Doses per Monthly Cycle:
-#'
-#' **Belumosudil**
-#' @param number_doses_belumosudil_first_cycle Number of doses during the first cycle. Default: 51.56666667.
-#' @param number_doses_belumosudil_cycle_2 Number of doses during the second cycle. Default: 51.56666667.
-#' @param number_doses_belumosudil_subsequent_cycles Number of doses during subsequent cycles. Default: 51.56666667.
-#'
-#' **Azithromycin**
-#' @param number_doses_azithromycin_first_cycle Number of doses during the first cycle. Default: 13.
-#' @param number_doses_azithromycin_cycle_2 Number of doses during the second cycle. Default: 13.
-#' @param number_doses_azithromycin_subsequent_cycles Number of doses during subsequent cycles. Default: 13.
-#'
-#' **Omeprazole (PPI)**
-#' @param number_doses_omeprazole_first_cycle Number of doses during the first cycle. Default: 30.33333333.
-#' @param number_doses_omeprazole_cycle_2 Number of doses during the second cycle. Default: 30.33333333.
-#' @param number_doses_omeprazole_subsequent_cycles Number of doses during subsequent cycles. Default: 30.33333333.
-#'
-#' @section Disease Management Drug Prices:
-#'
-#' **Azathioprine**
-#' @param generic_name_azathioprine Generic name of the drug. Default: "Azathioprine".
-#' @param brand_name_azathioprine Brand name. Default: "NR".
-#' @param dose_form_azathioprine Dosage form (e.g., oral). Default: "Oral".
-#' @param drug_dose_mg_azathioprine Drug dose in milligrams. Default: 143.0625.
-#' @param dosing_regimen_azathioprine Recommended dosing regimen. Default: "1-2.5 mg/kg daily by mouth".
-#' @param strength_per_unit_azathioprine Strength per unit (mg per tablet). Default: 100.
-#' @param pack_size_azathioprine Number of units in a pack. Default: 100.
-#' @param pack_price_azathioprine Price per pack in GBP. Default: £43.96.
-#' @param discount_azathioprine Discount percentage. Default: 0%.
-#'
-#' **MMF**
-#' @param generic_name_mmf Generic name of the drug. Default: "MMF".
-#' @param brand_name_mmf Brand name. Default: "NR".
-#' @param dose_form_mmf Dosage form (e.g., oral). Default: "Oral".
-#' @param drug_dose_mg_mmf Drug dose in milligrams. Default: 1000.
-#' @param dosing_regimen_mmf Recommended dosing regimen. Default: "1,000 mg twice daily".
-#' @param strength_per_unit_mmf Strength per unit (mg per tablet). Default: 500.
-#' @param pack_size_mmf Number of units in a pack. Default: 50.
-#' @param pack_price_mmf Price per pack in GBP. Default: £6.19.
-#' @param discount_mmf Discount percentage. Default: 0%.
-#'
-#' **ECP**
-#' @param generic_name_ecp Generic name of the treatment. Default: "ECP".
-#' @param brand_name_ecp Brand name. Default: "NR".
-#' @param dose_form_ecp Dosage form. Default: "IV".
-#' @param drug_dose_mg_ecp Number of sessions per 28-day cycle. Default: 3.2.
-#' @param dosing_regimen_ecp Recommended dosing regimen. Default: "3.2 sessions per 28-day cycle".
-#' @param strength_per_unit_ecp Strength per session. Default: 1.
-#' @param pack_size_ecp Number of units in a pack. Default: 1.
-#' @param pack_price_ecp Price per pack in GBP. Default: £1585.
-#' @param discount_ecp Discount percentage. Default: 0%.
-#'
-#' **Prednisone**
-#' @param generic_name_prednisone Generic name of the drug. Default: "Prednisone".
-#' @param brand_name_prednisone Brand name. Default: "NR".
-#' @param dose_form_prednisone Dosage form (e.g., oral). Default: "Oral".
-#' @param drug_dose_mg_prednisone Drug dose in milligrams. Default: 81.75.
-#' @param dosing_regimen_prednisone Recommended dosing regimen. Default: "1 mg/kg every other day".
-#' @param strength_per_unit_prednisone Strength per unit (mg per tablet). Default: 25.
-#' @param pack_size_prednisone Number of units in a pack. Default: 56.
-#' @param pack_price_prednisone Price per pack in GBP. Default: £42.44.
-#' @param discount_prednisone Discount percentage. Default: 0%.
-#'
-#' **Cyclosporine**
-#' @param generic_name_cyclosporine Generic name of the drug. Default: "Cyclosporine".
-#' @param brand_name_cyclosporine Brand name. Default: "NR".
-#' @param dose_form_cyclosporine Dosage form (e.g., oral). Default: "Oral".
-#' @param drug_dose_mg_cyclosporine Drug dose in milligrams. Default: 327.
-#' @param dosing_regimen_cyclosporine Recommended dosing regimen. Default: "2-6 mg/kg daily by mouth".
-#' @param strength_per_unit_cyclosporine Strength per unit (mg per tablet). Default: 100.
-#' @param pack_size_cyclosporine Number of units in a pack. Default: 30.
-#' @param pack_price_cyclosporine Price per pack in GBP. Default: £41.59.
-#' @param discount_cyclosporine Discount percentage. Default: 0%.
-#'
-#' **Tacrolimus**
-#' @param generic_name_tacrolimus Generic name of the drug. Default: "Tacrolimus".
-#' @param brand_name_tacrolimus Brand name. Default: "NR".
-#' @param dose_form_tacrolimus Dosage form (e.g., oral). Default: "Oral".
-#' @param drug_dose_mg_tacrolimus Drug dose in milligrams. Default: 1.
-#' @param dosing_regimen_tacrolimus Recommended dosing regimen. Default: "1 mg twice daily".
-#' @param strength_per_unit_tacrolimus Strength per unit (mg per tablet). Default : 1
-#' @param pack_size_tacrolimus Number of units in a pack. Default: 30.
-#' @param pack_price_tacrolimus Price per pack in GBP. Default: £27.42.
-#' @param discount_tacrolimus Discount percentage. Default: 0%.
-#' 
-#' @section Number of Doses per Monthly Cycle:
-#'
-#' **CLAD 0-2 Data**
-#' @param clad_0_2_azathioprine Number of doses for Azathioprine in CLAD 0-2. Default: 6.6733.
-#' @param clad_0_2_mmf Number of doses for MMF in CLAD 0-2. Default: 13.3467.
-#' @param clad_0_2_ecp Number of doses for ECP in CLAD 0-2. Default: 0.0433.
-#' @param clad_0_2_prednisone Number of doses for Prednisone in CLAD 0-2. Default: 6.825.
-#' @param clad_0_2_cyclosporine Number of doses for Cyclosporine in CLAD 0-2. Default: 33.9733.
-#' @param clad_0_2_tacrolimus Number of doses for Tacrolimus in CLAD 0-2. Default: 67.9467.
-#'
-#' **CLAD 3 Data**
-#' @param clad_3_azathioprine Number of doses for Azathioprine in CLAD 3. Default: 7.8867.
-#' @param clad_3_mmf Number of doses for MMF in CLAD 3. Default: 15.773.
-#' @param clad_3_ecp Number of doses for ECP in CLAD 3. Default: 0.0325.
-#' @param clad_3_prednisone Number of doses for Prednisone in CLAD 3. Default: 11.83.
-#' @param clad_3_cyclosporine Number of doses for Cyclosporine in CLAD 3. Default: 37.0067.
-#' @param clad_3_tacrolimus Number of doses for Tacrolimus in CLAD 3. Default: 74.0133.
-#'
-#' **CLAD 4 Data**
-#' @param clad_4_azathioprine Number of doses for Azathioprine in CLAD 4. Default: 5.915.
-#' @param clad_4_mmf Number of doses for MMF in CLAD 4. Default: 11.83.
-#' @param clad_4_ecp Number of doses for ECP in CLAD 4. Default: 0.0867.
-#' @param clad_4_prednisone Number of doses for Prednisone in CLAD 4. Default: 8.3417.
-#' @param clad_4_cyclosporine Number of doses for Cyclosporine in CLAD 4. Default: 31.85.
-#' @param clad_4_tacrolimus Number of doses for Tacrolimus in CLAD 4. Default: 63.7.
-#'
-#' @section Administration Costs:
-#' 
-#' @param unit.cost_admin_ECP Unit cost for ECP administration. Default: £124.155.
-#' @param unit.cost_admin_oral Unit cost for oral administration. Default: £0.
-#'
-#' @section Health State Costs:
-#'
-#' **Unit Costs per Resource**
-#' @param unit.cost_ICU_visits Cost per ICU visit. Default: £1824.6892.
-#' @param unit.cost_non_ICU_visits Cost per non-ICU visit. Default: £1328.6730.
-#' @param unit.cost_AE_visits Cost per AE visit. Default: £277.2413.
-#' @param unit.cost_GP_visits Cost per GP visit. Default: £59.9368.
-#' @param unit.cost_outpatient_hospital Cost per outpatient hospital visit. Default: £126.0945.
-#' @param unit.cost_lab_services Cost per lab service. Default: £3.4736.
-#' @param unit.cost_other_outpatient_visits Cost per other outpatient visit. Default: £126.0945.
-#' @param unit.cost_HCRU_8 Cost for HCRU 8 resource use. Default: £0.
-#' @param unit.cost_HCRU_9 Cost for HCRU 9 resource use. Default: £0.
-#'
-#' **Resource Use per Patient per Month**
-#'
-#' *CLAD 0-2*
-#' @param resource.use_clad_0_2_ICU_visits_belumosudil ICU visits (Belumosudil). Default: 0.
-#' @param resource.use_clad_0_2_ICU_visits_BSC ICU visits (BSC). Default: 0.
-#' @param resource.use_clad_0_2_non_ICU_visits_belumosudil Non-ICU visits (Belumosudil). Default: 0.15.
-#' @param resource.use_clad_0_2_non_ICU_visits_BSC Non-ICU visits (BSC). Default: 0.15.
-#' @param resource.use_clad_0_2_AE_visits_belumosudil AE visits (Belumosudil). Default: 0.03.
-#' @param resource.use_clad_0_2_AE_visits_BSC AE visits (BSC). Default: 0.03.
-#' @param resource.use_clad_0_2_GP_visits_belumosudil GP visits (Belumosudil). Default: 1.52.
-#' @param resource.use_clad_0_2_GP_visits_BSC GP visits (BSC). Default: 1.52.
-#' @param resource.use_clad_0_2_outpatient_hospital_belumosudil Outpatient hospital visits (Belumosudil). Default: 0.86.
-#' @param resource.use_clad_0_2_outpatient_hospital_BSC Outpatient hospital visits (BSC). Default: 0.86.
-#' @param resource.use_clad_0_2_lab_services_belumosudil Lab services (Belumosudil). Default: 1.49.
-#' @param resource.use_clad_0_2_lab_services_BSC Lab services (BSC). Default: 1.49.
-#' @param resource.use_clad_0_2_other_outpatient_visits_belumosudil Other outpatient visits (Belumosudil). Default: 0.87.
-#' @param resource.use_clad_0_2_other_outpatient_visits_BSC Other outpatient visits (BSC). Default: 0.87.
-#' @param resource.use_clad_0_2_HCRU_8_belumosudil HCRU 8 (Belumosudil). Default: 0.
-#' @param resource.use_clad_0_2_HCRU_8_BSC HCRU 8 (BSC). Default: 0.
-#' @param resource.use_clad_0_2_HCRU_9_belumosudil HCRU 9 (Belumosudil). Default: 0.
-#' @param resource.use_clad_0_2_HCRU_9_BSC HCRU 9 (BSC). Default: 0.
-#'
-#' *CLAD 3*
-#' @param resource.use_clad_3_ICU_visits_belumosudil ICU visits (Belumosudil). Default: 0.
-#' @param resource.use_clad_3_ICU_visits_BSC ICU visits (BSC). Default: 0.
-#' @param resource.use_clad_3_non_ICU_visits_belumosudil Non-ICU visits (Belumosudil). Default: 0.15.
-#' @param resource.use_clad_3_non_ICU_visits_BSC Non-ICU visits (BSC). Default: 0.15.
-#' @param resource.use_clad_3_AE_visits_belumosudil AE visits (Belumosudil). Default: 0.09.
-#' @param resource.use_clad_3_AE_visits_BSC AE visits (BSC). Default: 0.09.
-#' @param resource.use_clad_3_GP_visits_belumosudil GP visits (Belumosudil). Default: 2.32.
-#' @param resource.use_clad_3_GP_visits_BSC GP visits (BSC). Default: 2.32.
-#' @param resource.use_clad_3_outpatient_hospital_belumosudil Outpatient hospital visits (Belumosudil). Default: 1.61.
-#' @param resource.use_clad_3_outpatient_hospital_BSC Outpatient hospital visits (BSC). Default: 1.61.
-#' @param resource.use_clad_3_lab_services_belumosudil Lab services (Belumosudil). Default: 2.16.
-#' @param resource.use_clad_3_lab_services_BSC Lab services (BSC). Default: 2.16.
-#' @param resource.use_clad_3_other_outpatient_visits_belumosudil Other outpatient visits (Belumosudil). Default: 1.34.
-#' @param resource.use_clad_3_other_outpatient_visits_BSC Other outpatient visits (BSC). Default: 1.34.
-#' @param resource.use_clad_3_HCRU_8_belumosudil HCRU 8 (Belumosudil). Default: 0.
-#' @param resource.use_clad_3_HCRU_8_BSC HCRU 8 (BSC). Default: 0.
-#' @param resource.use_clad_3_HCRU_9_belumosudil HCRU 9 (Belumosudil). Default: 0.
-#' @param resource.use_clad_3_HCRU_9_BSC HCRU 9 (BSC). Default: 0.
-#'
-#' *CLAD 4*
-#' @param resource.use_clad_4_ICU_visits_belumosudil ICU visits (Belumosudil). Default: 0.14.
-#' @param resource.use_clad_4_ICU_visits_BSC ICU visits (BSC). Default: 0.14.
-#' @param resource.use_clad_4_non_ICU_visits_belumosudil Non-ICU visits (Belumosudil). Default: 0.13.
-#' @param resource.use_clad_4_non_ICU_visits_BSC Non-ICU visits (BSC). Default: 0.13.
-#' @param resource.use_clad_4_AE_visits_belumosudil AE visits (Belumosudil). Default: 0.14.
-#' @param resource.use_clad_4_AE_visits_BSC AE visits (BSC). Default: 0.14.
-#' @param resource.use_clad_4_GP_visits_belumosudil GP visits (Belumosudil). Default: 3.19.
-#' @param resource.use_clad_4_GP_visits_BSC GP visits (BSC). Default: 3.19.
-#' @param resource.use_clad_4_outpatient_hospital_belumosudil Outpatient hospital visits (Belumosudil). Default: 1.6.
-#' @param resource.use_clad_4_outpatient_hospital_BSC Outpatient hospital visits (BSC). Default: 1.6.
-#' @param resource.use_clad_4_lab_services_belumosudil Lab services (Belumosudil). Default: 2.71.
-#' @param resource.use_clad_4_lab_services_BSC Lab services (BSC). Default: 2.71.
-#' @param resource.use_clad_4_other_outpatient_visits_belumosudil Other outpatient visits (Belumosudil). Default: 1.66.
-#' @param resource.use_clad_4_other_outpatient_visits_BSC Other outpatient visits (BSC). Default: 1.66.
-#' @param resource.use_clad_4_HCRU_8_belumosudil HCRU 8 (Belumosudil). Default: 0.
-#' @param resource.use_clad_4_HCRU_8_BSC HCRU 8 (BSC). Default: 0.
-#' @param resource.use_clad_4_HCRU_9_belumosudil HCRU 9 (Belumosudil). Default: 0.
-#' @param resource.use_clad_4_HCRU_9_BSC HCRU 9 (BSC). Default: 0.
-#' #' @section Health State Costs:
-#' 
-#' @param health.state.cost_source A string indicating the source of the health state costs. 
-#'   Default is `"No"`.
-#' 
-#' @param health.state.cost_sheshadri.source_clad0_belumosudil Cost associated with Clad0 
-#'   stage for the Belumosudil treatment. Default is 419.789.
-#' 
-#' @param health.state.cost_sheshadri.source_clad1_belumosudil Cost associated with Clad1 
-#'   stage for the Belumosudil treatment. Default is 419.789.
-#' 
-#' @param health.state.cost_sheshadri.source_clad2_belumosudil Cost associated with Clad2 
-#'   stage for the Belumosudil treatment. Default is 818.361.
-#' 
-#' @param health.state.cost_sheshadri.source_clad3_belumosudil Cost associated with Clad3 
-#'   stage for the Belumosudil treatment. Default is 1306.346.
-#' 
-#' @param health.state.cost_sheshadri.source_clad4_belumosudil Cost associated with Clad4 
-#'   stage for the Belumosudil treatment. Default is 3820.533.
-#' 
-#' @param health.state.cost_sheshadri.source_clad0_BSC Cost associated with Clad0 
-#'   stage for the BSC treatment. Default is 419.789.
-#' 
-#' @param health.state.cost_sheshadri.source_clad1_BSC Cost associated with Clad1 
-#'   stage for the BSC treatment. Default is 419.789.
-#' 
-#' @param health.state.cost_sheshadri.source_clad2_BSC Cost associated with Clad2 
-#'   stage for the BSC treatment. Default is 818.361.
-#' 
-#' @param health.state.cost_sheshadri.source_clad3_BSC Cost associated with Clad3 
-#'   stage for the BSC treatment. Default is 1306.346.
-#' 
-#' @param health.state.cost_sheshadri.source_clad4_BSC Cost associated with Clad4 
-#'   stage for the BSC treatment. Default is 3820.533.
-#' 
-#' @section Percentage Reduction in Health State Costs over Time:
-#' 
-#' @param percentage_reduction_health.state.cost_per.stage A string indicating whether 
-#'   the percentage reduction in health state costs per stage is included. Default is "Include".
-#' 
-#' @param reduction_health.state.cost_clad0 Percentage reduction in health state cost 
-#'   for Clad0 stage. Default is 0.
-#' 
-#' @param reduction_health.state.cost_clad1 Percentage reduction in health state cost 
-#'   for Clad1 stage. Default is 0.22524.
-#' 
-#' @param reduction_health.state.cost_clad2 Percentage reduction in health state cost 
-#'   for Clad2 stage. Default is 0.22524.
-#' 
-#' @param reduction_health.state.cost_clad3 Percentage reduction in health state cost 
-#'   for Clad3 stage. Default is 0.22524.
-#' 
-#' @param reduction_health.state.cost_clad4 Percentage reduction in health state cost 
-#'   for Clad4 stage. Default is 0.22524.
-#' 
-#' @param reduction_health.state.cost_LTx Percentage reduction in health state cost 
-#'   for lung transplantation (LTx). Default is 0.22524.
-#' 
-#' @section Lung Transplantation Costs:
-#' 
-#' @param one.off_cost_LTx One-time cost associated with lung transplantation (LTx). 
-#'   Default is 80428.14.
 
 
 
 
-clad_model <- function(
-    # ========================================================
-    # General Settings
-    # ========================================================
-    time_horizon = 50,            # Time horizon for the analysis (in years)
-    dr_cost = 0.035,              # Discount rate for costs
-    dr_outcomes = 0.035,          # Discount rate for health outcomes
-    wtp_threshold = 30000,       # Willingness-to-pay threshold (in monetary units)
-    
-    # ========================================================
-    # Patient Population Characteristics
-    # ========================================================
-    mean_age = 56,                # Average age of the patient population
-    female_percentage = 0.43,    # Proportion of female patients
-    mean_weight = 82,             # Average weight of the patient population (in kg)
-    
-    # ========================================================
-    # Disease Incidence Probabilities
-    # ========================================================
-    p_incidence_BOS = 0.875,    # Probability of BOS phenotypes
-    p_incidence_RAS = 0.125,     # Probability of RAS phenotypes
-    
-    # ========================================================
-    # Baseline Characteristics (FEV1)
-    # ========================================================
-    n_baseline.clad = 1,          # Baseline Clad stage is set to 1
-    n_baselineFEV1_BOS = 2000,    # Baseline FEV1 value for BOS patients (in mL)
-    n_baselineFEV1_RAS = 1520,   # Baseline FEV1 value for RAS patients (in mL)
-    
-    # ========================================================
-    # Annual FEV1 Decline Rates
-    # ========================================================
-    # Year 1 FEV1 decline rates
-    n_declineFEV1.year1_BOS = 25.556,  # Decline rate for BOS patients (mL/year)
-    n_declineFEV1.year1_RAS = 21.944,  # Decline rate for RAS patients (mL/year)
-    
-    # Subsequent years FEV1 decline rates
-    n_declineFEV1.subsequent_BOS = 25.556,  # Subsequent decline rate for BOS patients (mL/year)
-    n_declineFEV1.subsequent_RAS = 21.944,  # Subsequent decline rate for RAS patients (mL/year)
-    
-    # Relative risk reduction of FEV1 decline with Belumosudil
-    rr_decline_belumosudil_BOS = 0.27,  # BOS patients
-    rr_decline_belumosudil_RAS = 0.27,  # RAS patients
-    
-    # ========================================================
-    # Survival Analysis Parameters
-    # ========================================================
-    survival_function = "Log-normal",  # Type of survival distribution used
-    hr_belumosudil = 0.73,             # Hazard ratio for Belumosudil
-    hr_clad1 = 0.8,                    # Hazard ratio for Clad1
-    hr_clad2 = 1,                      # Hazard ratio for Clad2
-    hr_clad3 = 1.5,                    # Hazard ratio for Clad3
-    hr_clad4 = 3,                      # Hazard ratio for Clad4
-    
-    # ========================================================
-    # Lung Transplantation (LTx) Probabilities
-    # ========================================================
-    # Belumosudil probabilities for different Clad levels
-    p_LTx_clad1_belumosudil = 0,
-    p_LTx_clad2_belumosudil = 0.0000387,
-    p_LTx_clad3_belumosudil = 0.0000387,
-    p_LTx_clad4_belumosudil = 0.0000387,
-    
-    # Best Supportive Care (BSC) probabilities for different Clad levels
-    p_LTx_clad1_BSC = 0,
-    p_LTx_clad2_BSC = 0.0000387,
-    p_LTx_clad3_BSC = 0.0000387,
-    p_LTx_clad4_BSC = 0.0000387,
-    
-    # ========================================================
-    # Stop Rule Probabilities (for different Clad levels)
-    # ========================================================
-    p_stoprule_clad1 = 0,
-    p_stoprule_clad2 = 0,
-    p_stoprule_clad3 = 0,
-    p_stoprule_clad4 = 1,          # Only applied for Clad4 level
-    
-    # ========================================================
-    # Discontinuation Rate for Belumosudil
-    # ========================================================
-    p_disc_belumosudil = 0.0119,   # Probability of discontinuing Belumosudil
-    
-    
-    # ========================================================
-    # Adverse Event (AE)
-    # ========================================================
-    
-    # -----------------------------------------------------
-    # Adverse Event (AE) Probabilities
-    # -----------------------------------------------------
-    
-    # Percentage of AEs managed in outpatient setting
-    p_AE_managed.outpatient = 1,  # Percentage of adverse events (AEs) managed in an outpatient setting. 
-    # Value of 1 indicates all AEs are managed in outpatient.
-    
-    # Probabilities of AEs for Belumosudil
-    p_AE_pneumonia_belumosudil = 0.003576921,  # Probability of pneumonia AE for Belumosudil
-    p_AE_hypertension_belumosudil = 0.003576921,  # Probability of hypertension AE for Belumosudil
-    p_AE_anaemia_belumosudil = 0.002039584,  # Probability of anaemia AE for Belumosudil
-    p_AE_thrombocytopenia_belumosudil = 0.001540479,  # Probability of thrombocytopenia AE for Belumosudil
-    p_AE_hyperglycaemia_belumosudil = 0.002579999,  # Probability of hyperglycaemia AE for Belumosudil
-    p_AE_GGT_increased_belumosudil = 0.002579999,  # Probability of GGT increased AE for Belumosudil
-    p_AE_diarrhoea_belumosudil = 0.000,  # Probability of diarrhoea AE for Belumosudil (no occurrence)
-    p_AE_AE8_belumosudil = 0.000,  # Placeholder for additional AE (AE8) probability for Belumosudil
-    p_AE_AE9_belumosudil = 0.000,  # Placeholder for additional AE (AE9) probability for Belumosudil
-    p_AE_AE10_belumosudil = 0.000,  # Placeholder for additional AE (AE10) probability for Belumosudil
-    p_AE_AE11_belumosudil = 0.000,  # Placeholder for additional AE (AE11) probability for Belumosudil
-    
-    # Probabilities of AEs for Best Supportive Care (BSC)
-    p_AE_pneumonia_BSC = 0.016995273,  # Probability of pneumonia AE for Best Supportive Care (BSC)
-    p_AE_hypertension_BSC = 0.012491647,  # Probability of hypertension AE for BSC
-    p_AE_anaemia_BSC = 0.013619484,  # Probability of anaemia AE for BSC
-    p_AE_thrombocytopenia_BSC = 0.018117967,  # Probability of thrombocytopenia AE for BSC
-    p_AE_hyperglycaemia_BSC = 0.0034224,  # Probability of hyperglycaemia AE for BSC
-    p_AE_GGT_increased_BSC = 0.0034224,  # Probability of GGT increased AE for BSC
-    p_AE_diarrhoea_BSC = 0.002282904,  # Probability of diarrhoea AE for BSC
-    p_AE_AE8_BSC = 0.000,  # Placeholder for additional AE (AE8) probability for BSC
-    p_AE_AE9_BSC = 0.000,  # Placeholder for additional AE (AE9) probability for BSC
-    p_AE_AE10_BSC = 0.000,  # Placeholder for additional AE (AE10) probability for BSC
-    p_AE_AE11_BSC = 0.000,  # Placeholder for additional AE (AE11) probability for BSC
-    
-    # -----------------------------------------------------
-    # Unit Costs for Outpatient Management of AEs
-    # -----------------------------------------------------
-    
-    # Costs for managing AEs in outpatient setting for Belumosudil
-    c_AE_pneumonia_outpatient = 371.768,  # Cost for managing pneumonia in outpatient setting for Belumosudil
-    c_AE_hypertension_outpatient = 447.730,  # Cost for managing hypertension in outpatient setting for Belumosudil
-    c_AE_anaemia_outpatient = 394.642,  # Cost for managing anaemia in outpatient setting for Belumosudil
-    c_AE_thrombocytopenia_outpatient = 442.712,  # Cost for managing thrombocytopenia in outpatient setting for Belumosudil
-    c_AE_hyperglycaemia_outpatient = 485.777,  # Cost for managing hyperglycaemia in outpatient setting for Belumosudil
-    c_AE_GGT_increased_outpatient = 485.777,  # Cost for managing increased GGT levels in outpatient setting for Belumosudil
-    c_AE_diarrhoea_outpatient = 388.046,  # Cost for managing diarrhoea in outpatient setting for Belumosudil
-    c_AE_AE8_outpatient = 0,  # Placeholder for AE8 outpatient management cost
-    c_AE_AE9_outpatient = 0,  # Placeholder for AE9 outpatient management cost
-    c_AE_AE10_outpatient = 0,  # Placeholder for AE10 outpatient management cost
-    c_AE_AE11_outpatient = 0,  # Placeholder for AE11 outpatient management cost
-    
-    # -----------------------------------------------------
-    # Unit Costs for Inpatient Management of AEs
-    # -----------------------------------------------------
-    
-    # Costs for managing AEs in inpatient setting for Belumosudil
-    c_AE_pneumonia_inpatient = 3344.581,  # Cost for managing pneumonia in inpatient setting for Belumosudil
-    c_AE_hypertension_inpatient = 1478.830,  # Cost for managing hypertension in inpatient setting for Belumosudil
-    c_AE_anaemia_inpatient = 1371.608,  # Cost for managing anaemia in inpatient setting for Belumosudil
-    c_AE_thrombocytopenia_inpatient = 1972.554,  # Cost for managing thrombocytopenia in inpatient setting for Belumosudil
-    c_AE_hyperglycaemia_inpatient = 767.985,  # Cost for managing hyperglycaemia in inpatient setting for Belumosudil
-    c_AE_GGT_increased_inpatient = 767.985,  # Cost for managing increased GGT levels in inpatient setting for Belumosudil
-    c_AE_diarrhoea_inpatient = 3484.009,  # Cost for managing diarrhoea in inpatient setting for Belumosudil
-    c_AE_AE8_inpatient = 0,  # Placeholder for AE8 inpatient management cost
-    c_AE_AE9_inpatient = 0,  # Placeholder for AE9 inpatient management cost
-    c_AE_AE10_inpatient = 0,  # Placeholder for AE10 inpatient management cost
-    c_AE_AE11_inpatient = 0,  # Placeholder for AE11 inpatient management cost
-    
-    # ========================================================
-    # Utility
-    # ========================================================
-    
-    # Health Utility Method
-    health_utility_method = "SGRQ based (CLAD)",  # Health utility method used, based on SGRQ for CLAD stages.
-    # Options include: SGRQ based (CLAD),
-    # CLAD (GOLD) stage-based COPD as proxy, 
-    # and FEV1 based (COPD as proxy).
-    
-    # Health State Utility Source
-    health_state_utility_source = "Esquinas et al.(2020)",  # Source of health state utility data, e.g., Esquinas et al. (2020),
-    # Pickard et al. (2011) for UK and US indices.
-    
-    # Utility Adjustment
-    include.utility.adjustment = "Yes",  # Indicates whether to include utility adjustment.
-    include_AE_disutility = "Include",  # Indicates whether to include disutility related to adverse events (AEs).
-    
-    # SGRQ Scores by CLAD Stages
-    SGRQ_clad0 = 38,  # SGRQ score for CLAD stage 0
-    SGRQ_clad1 = 38,  # SGRQ score for CLAD stage 1
-    SGRQ_clad2 = 38,  # SGRQ score for CLAD stage 2
-    SGRQ_clad3 = 63,  # SGRQ score for CLAD stage 3
-    SGRQ_clad4 = 63,  # SGRQ score for CLAD stage 4
-    SGRQ_LTx = 54.67,  # SGRQ score for Lung Transplant (LTx)
-    
-    # FEV1 Baseline Utility and Disutility
-    FEV1_baseline_utility = 0.739,  # Baseline utility for FEV1 in the model
-    disutility_by_percent_reduction_FEV1 = -0.0023,  # Disutility for each percentage reduction in FEV1
-    
-    # Utility by CLAD Stage based on Esquinas et al. (2020)
-    utility_clad0_stage.based_Esquinas.source = 0.70,  # Utility for CLAD stage 0
-    utility_clad1_stage.based_Esquinas.source = 0.70,  # Utility for CLAD stage 1
-    utility_clad2_stage.based_Esquinas.source = 0.70,  # Utility for CLAD stage 2
-    utility_clad3_stage.based_Esquinas.source = 0.66,  # Utility for CLAD stage 3
-    utility_clad4_stage.based_Esquinas.source = 0.60,  # Utility for CLAD stage 4
-    utility_LTx_stage.based_Esquinas.source = 0.65333,  # Utility for Lung Transplant (LTx)
-    
-    # Utility by CLAD Stage based on Pickard et al. (UK index)
-    utility_clad0_stage.based_Pickard.UK.source = 0.73,  # Utility for CLAD stage 0 (UK)
-    utility_clad1_stage.based_Pickard.UK.source = 0.59,  # Utility for CLAD stage 1 (UK)
-    utility_clad2_stage.based_Pickard.UK.source = 0.59,  # Utility for CLAD stage 2 (UK)
-    utility_clad3_stage.based_Pickard.UK.source = 0.63,  # Utility for CLAD stage 3 (UK)
-    utility_clad4_stage.based_Pickard.UK.source = 0.63,  # Utility for CLAD stage 4 (UK)
-    utility_LTx_stage.based_Pickard.UK.source = 0.61667,  # Utility for Lung Transplant (LTx) (UK)
-    
-    # Utility by CLAD Stage based on Pickard et al. (US index)
-    utility_clad0_stage.based_Pickard.US.source = 0.80,  # Utility for CLAD stage 0 (US)
-    utility_clad1_stage.based_Pickard.US.source = 0.70,  # Utility for CLAD stage 1 (US)
-    utility_clad2_stage.based_Pickard.US.source = 0.70,  # Utility for CLAD stage 2 (US)
-    utility_clad3_stage.based_Pickard.US.source = 0.72,  # Utility for CLAD stage 3 (US)
-    utility_clad4_stage.based_Pickard.US.source = 0.72,  # Utility for CLAD stage 4 (US)
-    utility_LTx_stage.based_Pickard.US.source = 0.71333,  # Utility for Lung Transplant (LTx) (US)
-    
-    # Disutility due to Adverse Events (AEs)
-    disutility_pneumonia = -0.195,  # Disutility for pneumonia
-    disutility_hypertension = -0.020,  # Disutility for hypertension
-    disutility_anaemia = -0.900,  # Disutility for anaemia
-    disutility_thrombocytopenia = -0.110,  # Disutility for thrombocytopenia
-    disutility_hyperglycaemia = 0,  # Disutility for hyperglycaemia
-    disutility_GGT_increased = 0,  # Disutility for increased GGT levels
-    disutility_diarrhoea = -0.176,  # Disutility for diarrhoea
-    disutility_AE8 = 0,  # Placeholder for additional AE disutility
-    disutility_AE9 = 0,  # Placeholder for additional AE disutility
-    disutility_AE10 = 0,  # Placeholder for additional AE disutility
-    disutility_AE11 = 0,  # Placeholder for additional AE disutility
-    
-    # Duration of Adverse Events (AEs) in Days
-    duration_days_pneumonia = 14.7,  # Duration for pneumonia
-    duration_days_hypertension = 21.0,  # Duration for hypertension
-    duration_days_anaemia = 23.2,  # Duration for anaemia
-    duration_days_thrombocytopenia = 23.2,  # Duration for thrombocytopenia
-    duration_days_hyperglycaemia = 0,  # Duration for hyperglycaemia
-    duration_days_GGT_increased = 0,  # Duration for increased GGT levels
-    duration_days_diarrhoea = 7,  # Duration for diarrhoea
-    duration_days_AE8 = 0,  # Placeholder for duration of AE8
-    duration_days_AE9 = 0,  # Placeholder for duration of AE9
-    duration_days_AE10 = 0,  # Placeholder for duration of AE10
-    duration_days_AE11 = 0,  # Placeholder for duration of AE11
-    
-    # ========================================================
-    # PPI
-    # ========================================================
-    
-    percentage_receiving_ppi = 0.7,   
-    
-    # ========================================================
-    # Drug Prices
-    # ========================================================
-    
-    # --------------------------------------------------------
-    # Belumosudil
-    # --------------------------------------------------------
-    generic_name_belumosudil = "Belumosudil",  # Generic name of the drug
-    brand_name_belumosudil = "REZUROCK®",  # Brand name of the drug
-    dose_form_belumosudil = "Oral",  # Dosage form (e.g., oral, IV, etc.)
-    dose_mg_belumosudil = 200,  # Drug dose in mg
-    dosing_regimen_belumosudil = "200 mg once daily",  # Recommended dosing regimen
-    strength_per_unit_belumosudil = 200,  # Strength per unit (mg per tablet or capsule)
-    pack_size_belumosudil = 30,  # Number of units in a pack
-    pack_price_belumosudil = 6708,  # Price per pack in £
-    pas_discount_belumosudil = 0,  # PAS (Patient Access Scheme) discount in %
-    absolute_reduction_belumosudil = 0,  # Absolute price reduction in £
-    discount_belumosudil = 0,  # Additional discount in %
-    
-    # --------------------------------------------------------
-    # Azithromycin
-    # --------------------------------------------------------
-    generic_name_azithromycin = "Azithromycin",  # Generic name of the drug
-    brand_name_azithromycin = "NR",  # Brand name (NR indicates not reported)
-    dose_form_azithromycin = "Oral",  # Dosage form (e.g., oral)
-    dose_mg_azithromycin = 250,  # Drug dose in mg
-    dosing_regimen_azithromycin = "250 mg three times a week",  # Recommended dosing regimen
-    strength_per_unit_azithromycin = 250,  # Strength per unit (mg per tablet)
-    pack_size_azithromycin = 4,  # Number of units in a pack
-    pack_price_azithromycin = 0.94,  # Price per pack in £
-    pas_discount_azithromycin = 0,  # PAS discount in %
-    absolute_reduction_azithromycin = 0,  # Absolute price reduction in £
-    discount_azithromycin = 0,  # Additional discount in %
-    
-    # --------------------------------------------------------
-    # Omeprazole (PPI)
-    # --------------------------------------------------------
-    generic_name_omeprazole = "Omeprazole (PPI)",  # Generic name of the drug
-    brand_name_omeprazole = "NR",  # Brand name (NR indicates not reported)
-    dose_form_omeprazole = "Oral",  # Dosage form (e.g., oral)
-    dose_mg_omeprazole = 20,  # Drug dose in mg
-    dosing_regimen_omeprazole = "20 mg once daily",  # Recommended dosing regimen
-    strength_per_unit_omeprazole = 20,  # Strength per unit (mg per tablet)
-    pack_size_omeprazole = 28,  # Number of units in a pack
-    pack_price_omeprazole = 6.16,  # Price per pack in £
-    pas_discount_omeprazole = 0,  # PAS discount in %
-    absolute_reduction_omeprazole = 0,  # Absolute price reduction in £
-    discount_omeprazole = 0,  # Additional discount in %
-    
-    
-    # ========================================================
-    # Number of Doses per Monthly Cycle
-    # ========================================================
-    
-    # --------------------------------------------------------
-    # Belumosudil
-    # --------------------------------------------------------
-    number_doses_belumosudil_first_cycle = 51.56666667,   # Doses during the first cycle
-    number_doses_belumosudil_cycle_2 = 51.56666667,      # Doses during the second cycle
-    number_doses_belumosudil_subsequent_cycles = 51.56666667,  # Doses during subsequent cycles
-    
-    # --------------------------------------------------------
-    # Azithromycin
-    # --------------------------------------------------------
-    number_doses_azithromycin_first_cycle = 13,  # Doses during the first cycle
-    number_doses_azithromycin_cycle_2 = 13,      # Doses during the second cycle
-    number_doses_azithromycin_subsequent_cycles = 13,  # Doses during subsequent cycles
-    
-    # --------------------------------------------------------
-    # Omeprazole (PPI)
-    # --------------------------------------------------------
-    number_doses_omeprazole_first_cycle = 30.33333333,    # Doses during the first cycle
-    number_doses_omeprazole_cycle_2 = 30.33333333,        # Doses during the second cycle
-    number_doses_omeprazole_subsequent_cycles = 30.33333333,  # Doses during subsequent cycles
-    
-    
-    # ========================================================
-    # Disease management drug prices
-    # ========================================================
-    
-    # --------------------------------------------------------
-    # Azathioprine
-    # --------------------------------------------------------
-    generic_name_azathioprine = "Azathioprine",  # Generic name of the drug
-    brand_name_azathioprine = "NR",             # Brand name (not reported here)
-    dose_form_azathioprine = "Oral",            # Form of administration
-    drug_dose_mg_azathioprine = 143.0625,       # Dose in mg
-    dosing_regimen_azathioprine = "1-2.5 mg/kg daily by mouth",  # Recommended regimen
-    strength_per_unit_azathioprine = 100,       # Strength per unit (mg)
-    pack_size_azathioprine = 100,               # Number of units in a pack
-    pack_price_azathioprine = 43.96,               # Pack price (£)
-    discount_azathioprine = 0,                  # Discount percentage (%)
-    
-    # --------------------------------------------------------
-    # MMF
-    # --------------------------------------------------------
-    generic_name_mmf = "MMF",                   # Generic name of the drug
-    brand_name_mmf = "NR",                      # Brand name (not reported here)
-    dose_form_mmf = "Oral",                     # Form of administration
-    drug_dose_mg_mmf = 1000,                    # Dose in mg
-    dosing_regimen_mmf = "1,000 mg twice daily",  # Recommended regimen
-    strength_per_unit_mmf = 500,                # Strength per unit (mg)
-    pack_size_mmf = 50,                         # Number of units in a pack
-    pack_price_mmf = 6.19,                      # Pack price (£)
-    discount_mmf = 0,                           # Discount percentage (%)
-    
-    # --------------------------------------------------------
-    # ECP
-    # --------------------------------------------------------
-    generic_name_ecp = "ECP",                   # Generic name of the treatment
-    brand_name_ecp = "NR",                      # Brand name (not reported here)
-    dose_form_ecp = "IV",                       # Form of administration
-    drug_dose_mg_ecp = 3.2,                     # Sessions per 28-day cycle
-    dosing_regimen_ecp = "3.2 sessions per 28-day cycle",  # Recommended regimen
-    strength_per_unit_ecp = 1,                  # Strength per session (1 session)
-    pack_size_ecp = 1,                          # Number of units in a pack
-    pack_price_ecp = 1585,                      # Pack price (£)
-    discount_ecp = 0,                           # Discount percentage (%)
-    
-    # --------------------------------------------------------
-    # Prednisone
-    # --------------------------------------------------------
-    generic_name_prednisone = "Prednisone",     # Generic name of the drug
-    brand_name_prednisone = "NR",               # Brand name (not reported here)
-    dose_form_prednisone = "Oral",              # Form of administration
-    drug_dose_mg_prednisone = 81.75,            # Dose in mg
-    dosing_regimen_prednisone = "1 mg/kg every other day",  # Recommended regimen
-    strength_per_unit_prednisone = 25,          # Strength per unit (mg)
-    pack_size_prednisone = 56,                  # Number of units in a pack
-    pack_price_prednisone = 42.44,                 # Pack price (£)
-    discount_prednisone = 0 ,                   # Discount percentage (%)
-    
-    # --------------------------------------------------------
-    # Cyclosporine
-    # --------------------------------------------------------
-    generic_name_cyclosporine = "Cyclosporine",  # Generic name of the drug
-    brand_name_cyclosporine = "NR",              # Brand name (not reported here)
-    dose_form_cyclosporine = "Oral" ,            # Form of administration
-    drug_dose_mg_cyclosporine = 327,             # Dose in mg
-    dosing_regimen_cyclosporine = "2-6 mg/kg daily by mouth as a maintenance regimen",  # Recommended regimen
-    strength_per_unit_cyclosporine = 100 ,       # Strength per unit (mg)
-    pack_size_cyclosporine = 30 ,                # Number of units in a pack
-    pack_price_cyclosporine = 41.59,                # Pack price (£)
-    discount_cyclosporine = 0 ,                  # Discount percentage (%)
-    
-    # --------------------------------------------------------
-    # Tacrolimus
-    # --------------------------------------------------------
-    generic_name_tacrolimus = "Tacrolimus",      # Generic name of the drug
-    brand_name_tacrolimus = "NR" ,               # Brand name (not reported here)
-    dose_form_tacrolimus = "Oral" ,              # Form of administration
-    drug_dose_mg_tacrolimus = 1 ,                # Dose in mg
-    dosing_regimen_tacrolimus = "1 mg twice daily",  # Recommended regimen
-    strength_per_unit_tacrolimus = 1,            # Strength per unit (mg)
-    pack_size_tacrolimus = 30 ,                  # Number of units in a pack
-    pack_price_tacrolimus = 59.1,                  # Pack price (£)
-    discount_tacrolimus = 0 ,                    # Discount percentage (%)
-    
-    
-    # ========================================================
-    # Number of Doses per Monthly Cycle
-    # ========================================================
-    
-    # --------------------------------------------------------
-    # CLAD 0-2 Data
-    # --------------------------------------------------------
-    
-    # Azathioprine
-    clad_0_2_azathioprine = 6.6733,  # Number of doses for CLAD 0-2
-    
-    # MMF
-    clad_0_2_mmf = 13.3467,  # Number of doses for CLAD 0-2
-    
-    # ECP
-    clad_0_2_ecp = 0.0433,  # Number of doses for CLAD 0-2
-    
-    # Prednisone
-    clad_0_2_prednisone = 6.825,  # Number of doses for CLAD 0-2
-    
-    # Cyclosporine
-    clad_0_2_cyclosporine = 33.9733,  # Number of doses for CLAD 0-2
-    
-    # Tacrolimus
-    clad_0_2_tacrolimus = 67.9467,  # Number of doses for CLAD 0-2
-    
-    # --------------------------------------------------------
-    # CLAD 3 Data
-    # --------------------------------------------------------
-    
-    # Azathioprine
-    clad_3_azathioprine = 7.8867 , # Number of doses for CLAD 3
-    
-    # MMF
-    clad_3_mmf = 15.773,  # Number of doses for CLAD 3
-    
-    # ECP
-    clad_3_ecp = 0.0325 , # Number of doses for CLAD 3
-    
-    # Prednisone
-    clad_3_prednisone = 11.83,  # Number of doses for CLAD 3
-    
-    # Cyclosporine
-    clad_3_cyclosporine = 37.0067,  # Number of doses for CLAD 3
-    
-    # Tacrolimus
-    clad_3_tacrolimus = 74.0133,  # Number of doses for CLAD 3
-    
-    # --------------------------------------------------------
-    # CLAD 4 Data
-    # -------------------------------------------------------- 
-    
-    # Azathioprine
-    clad_4_azathioprine = 5.915,  # Number of doses for CLAD 4
-    
-    # MMF
-    clad_4_mmf = 11.83,  # Number of doses for CLAD 4
-    
-    # ECP
-    clad_4_ecp = 0.0867,  # Number of doses for CLAD 4
-    
-    # Prednisone
-    clad_4_prednisone = 8.3417,  # Number of doses for CLAD 4
-    
-    # Cyclosporine
-    clad_4_cyclosporine = 31.85,  # Number of doses for CLAD 4
-    
-    # Tacrolimus
-    clad_4_tacrolimus = 63.7,  # Number of doses for CLAD 4
-    
-    # ========================================================
-    # Administration Costs
-    # ========================================================
-    
-    unit.cost_admin_ECP = 124.155,
-    unit.cost_admin_oral = 0,
-    
-    
-    # ========================================================
-    # Health State Costs
-    # ========================================================
-    
-    # --------------------------------------------------------
-    # Unit Cost per Resource
-    # -------------------------------------------------------- 
-    
-    unit.cost_ICU_visits = 1824.6892,
-    unit.cost_non_ICU_visits = 1328.6730,
-    unit.cost_AE_visits = 277.2413,
-    unit.cost_GP_visits = 59.9368,
-    unit.cost_outpatient_hospital = 126.0945,
-    unit.cost_lab_services = 3.4736,
-    unit.cost_other_outpatient_visits = 126.0945,
-    unit.cost_HCRU_8 = 0.0000,
-    unit.cost_HCRU_9 = 0.0000,
-    
-    # --------------------------------------------------------
-    # Resource Use per Patient per Month - CLAD 0-2
-    # -------------------------------------------------------- 
-    
-    resource.use_clad_0_2_ICU_visits_belumosudil = 0,
-    resource.use_clad_0_2_ICU_visits_BSC = 0,
-    
-    resource.use_clad_0_2_non_ICU_visits_belumosudil = 0.15,
-    resource.use_clad_0_2_non_ICU_visits_BSC = 0.15,
-    
-    resource.use_clad_0_2_AE_visits_belumosudil = 0.03,
-    resource.use_clad_0_2_AE_visits_BSC = 0.03,
-    
-    resource.use_clad_0_2_GP_visits_belumosudil = 1.52,
-    resource.use_clad_0_2_GP_visits_BSC = 1.52,
-    
-    resource.use_clad_0_2_outpatient_hospital_belumosudil = 0.86,
-    resource.use_clad_0_2_outpatient_hospital_BSC = 0.86,
-    
-    resource.use_clad_0_2_lab_services_belumosudil = 1.49,
-    resource.use_clad_0_2_lab_services_BSC = 1.49,
-    
-    resource.use_clad_0_2_other_outpatient_visits_belumosudil = 0.87,
-    resource.use_clad_0_2_other_outpatient_visits_BSC = 0.87,
-    
-    resource.use_clad_0_2_HCRU_8_belumosudil = 0,
-    resource.use_clad_0_2_HCRU_8_BSC = 0,
-    
-    resource.use_clad_0_2_HCRU_9_belumosudil = 0,
-    resource.use_clad_0_2_HCRU_9_BSC = 0,
-    
-    # --------------------------------------------------------
-    # Resource Use per Patient per Month - CLAD 3
-    # -------------------------------------------------------- 
-    
-    resource.use_clad_3_ICU_visits_belumosudil = 0,
-    resource.use_clad_3_ICU_visits_BSC = 0,
-    
-    resource.use_clad_3_non_ICU_visits_belumosudil = 0.15,
-    resource.use_clad_3_non_ICU_visits_BSC = 0.15,
-    
-    resource.use_clad_3_AE_visits_belumosudil = 0.09,
-    resource.use_clad_3_AE_visits_BSC = 0.09,
-    
-    resource.use_clad_3_GP_visits_belumosudil = 2.32,
-    resource.use_clad_3_GP_visits_BSC = 2.32,
-    
-    resource.use_clad_3_outpatient_hospital_belumosudil = 1.61,
-    resource.use_clad_3_outpatient_hospital_BSC = 1.61,
-    
-    resource.use_clad_3_lab_services_belumosudil = 2.16,
-    resource.use_clad_3_lab_services_BSC = 2.16,
-    
-    resource.use_clad_3_other_outpatient_visits_belumosudil = 1.34,
-    resource.use_clad_3_other_outpatient_visits_BSC = 1.34,
-    
-    resource.use_clad_3_HCRU_8_belumosudil = 0,
-    resource.use_clad_3_HCRU_8_BSC = 0,
-    
-    resource.use_clad_3_HCRU_9_belumosudil = 0,
-    resource.use_clad_3_HCRU_9_BSC = 0,
-    
-    # --------------------------------------------------------
-    # Resource Use per Patient per Month - CLAD 4
-    # -------------------------------------------------------- 
-    
-    resource.use_clad_4_ICU_visits_belumosudil = 0.14,
-    resource.use_clad_4_ICU_visits_BSC = 0.14,
-    
-    resource.use_clad_4_non_ICU_visits_belumosudil = 0.13,
-    resource.use_clad_4_non_ICU_visits_BSC = 0.13,
-    
-    resource.use_clad_4_AE_visits_belumosudil = 0.14,
-    resource.use_clad_4_AE_visits_BSC = 0.14,
-    
-    resource.use_clad_4_GP_visits_belumosudil = 3.19,
-    resource.use_clad_4_GP_visits_BSC = 3.19,
-    
-    resource.use_clad_4_outpatient_hospital_belumosudil = 1.6,
-    resource.use_clad_4_outpatient_hospital_BSC = 1.6,
-    
-    resource.use_clad_4_lab_services_belumosudil = 2.71,
-    resource.use_clad_4_lab_services_BSC = 2.71,
-    
-    resource.use_clad_4_other_outpatient_visits_belumosudil = 1.66,
-    resource.use_clad_4_other_outpatient_visits_BSC = 1.66,
-    
-    resource.use_clad_4_HCRU_8_belumosudil = 0,
-    resource.use_clad_4_HCRU_8_BSC = 0,
-    
-    resource.use_clad_4_HCRU_9_belumosudil = 0,
-    resource.use_clad_4_HCRU_9_BSC = 0,
-    
-    # --------------------------------------------------------
-    # Health State Costs - source : Sheshadri et al. (2021)
-    # --------------------------------------------------------
-    
-    health.state.cost_source = "No",
-    
-    health.state.cost_sheshadri.source_clad0_belumosudil = 419.789,
-    health.state.cost_sheshadri.source_clad1_belumosudil = 419.789,
-    health.state.cost_sheshadri.source_clad2_belumosudil = 818.361,
-    health.state.cost_sheshadri.source_clad3_belumosudil = 1306.346,
-    health.state.cost_sheshadri.source_clad4_belumosudil = 3820.533,
-    
-    health.state.cost_sheshadri.source_clad0_BSC = 419.789,
-    health.state.cost_sheshadri.source_clad1_BSC = 419.789,
-    health.state.cost_sheshadri.source_clad2_BSC = 818.361,
-    health.state.cost_sheshadri.source_clad3_BSC = 1306.346,
-    health.state.cost_sheshadri.source_clad4_BSC = 3820.533,
-    
-    # ========================================================
-    # Percentage Reduction in Health State Costs over Time
-    # ========================================================
-    
-    percentage_reduction_health.state.cost_per.stage = "Include",
-    
-    reduction_health.state.cost_clad0 = 0,
-    reduction_health.state.cost_clad1 = 0.22524,
-    reduction_health.state.cost_clad2 = 0.22524,
-    reduction_health.state.cost_clad3 = 0.22524,
-    reduction_health.state.cost_clad4 = 0.22524,
-    reduction_health.state.cost_LTx = 0.22524,
-    
-    # ========================================================
-    # Lung Re_Transplantation Costs
-    # ========================================================
-    
-    one.off_cost_LTx = 80428.14
-) {
-  ###########################################################
-  ###########################################################
-  ###########################################################
-  ###########################################################
-  
+# ========================================================
+# General Settings
+# ========================================================
+time_horizon <- 50            # Time horizon for the analysis (in years)
+dr_cost <- 0              # Discount rate for costs
+dr_outcomes <- 0          # Discount rate for health outcomes
+wtp_threshold <- 30000       # Willingness-to-pay threshold (in monetary units)
+
+# ========================================================
+# Patient Population Characteristics
+# ========================================================
+mean_age <- 56                # Average age of the patient population
+female_percentage <- 0.43    # Proportion of female patients
+mean_weight <- 82             # Average weight of the patient population (in kg)
+
+# ========================================================
+# Disease Incidence Probabilities
+# ========================================================
+p_incidence_BOS <- 0.875    # Probability of BOS phenotypes
+p_incidence_RAS <- 0.125     # Probability of RAS phenotypes
+
+# ========================================================
+# Baseline Characteristics (FEV1)
+# ========================================================
+n_baseline.clad <- 1          # Baseline Clad stage is set to 1
+n_baselineFEV1_BOS <- 2000    # Baseline FEV1 value for BOS patients (in mL)
+n_baselineFEV1_RAS <- 1520   # Baseline FEV1 value for RAS patients (in mL)
+
+# ========================================================
+# Annual FEV1 Decline Rates
+# ========================================================
+# Year 1 FEV1 decline rates
+n_declineFEV1.year1_BOS <- 25.556  # Decline rate for BOS patients (mL/year)
+n_declineFEV1.year1_RAS <- 21.944  # Decline rate for RAS patients (mL/year)
+
+# Subsequent years FEV1 decline rates
+n_declineFEV1.subsequent_BOS <- 25.556  # Subsequent decline rate for BOS patients (mL/year)
+n_declineFEV1.subsequent_RAS <- 21.944  # Subsequent decline rate for RAS patients (mL/year)
+
+# Relative risk reduction of FEV1 decline with Belumosudil
+rr_decline_belumosudil_BOS <- 0.27  # BOS patients
+rr_decline_belumosudil_RAS <- 0.27  # RAS patients
+
+# ========================================================
+# Survival Analysis Parameters
+# ========================================================
+survival_function <- "Log-normal"  # Type of survival distribution used
+hr_belumosudil <- 0.73             # Hazard ratio for Belumosudil
+hr_clad1 <- 0.8                    # Hazard ratio for Clad1
+hr_clad2 <- 1                      # Hazard ratio for Clad2
+hr_clad3 <- 1.5                    # Hazard ratio for Clad3
+hr_clad4 <- 3                      # Hazard ratio for Clad4
+
+# ========================================================
+# Lung Transplantation (LTx) Probabilities
+# ========================================================
+# Belumosudil probabilities for different Clad levels
+p_LTx_clad1_belumosudil <- 0
+p_LTx_clad2_belumosudil <- 0.0000387075
+p_LTx_clad3_belumosudil <- 0.0000387075
+p_LTx_clad4_belumosudil <- 0.0000387075
+
+# Best Supportive Care (BSC) probabilities for different Clad levels
+p_LTx_clad1_BSC <- 0
+p_LTx_clad2_BSC <- 0.0000387075
+p_LTx_clad3_BSC <- 0.0000387075
+p_LTx_clad4_BSC <- 0.0000387075
+
+# ========================================================
+# Stop Rule Probabilities (for different Clad levels)
+# ========================================================
+p_stoprule_clad1 <- 0
+p_stoprule_clad2 <- 0
+p_stoprule_clad3 <- 0
+p_stoprule_clad4 <- 1          # Only applied for Clad4 level
+
+# ========================================================
+# Discontinuation Rate for Belumosudil
+# ========================================================
+p_disc_belumosudil <- 0.011928287
+# Probability of discontinuing Belumosudil
+
+
+# ========================================================
+# Adverse Event (AE)
+# ========================================================
+
+# -----------------------------------------------------
+# Adverse Event (AE) Probabilities
+# -----------------------------------------------------
+
+# Percentage of AEs managed in outpatient setting
+p_AE_managed.outpatient <- 1  # Percentage of adverse events (AEs) managed in an outpatient setting.
+# Value of 1 indicates all AEs are managed in outpatient.
+
+# Probabilities of AEs for Belumosudil
+p_AE_pneumonia_belumosudil <- 0.003576921  # Probability of pneumonia AE for Belumosudil
+p_AE_hypertension_belumosudil <- 0.003576921  # Probability of hypertension AE for Belumosudil
+p_AE_anaemia_belumosudil <- 0.002039584  # Probability of anaemia AE for Belumosudil
+p_AE_thrombocytopenia_belumosudil <- 0.001540479  # Probability of thrombocytopenia AE for Belumosudil
+p_AE_hyperglycaemia_belumosudil <- 0.002579999  # Probability of hyperglycaemia AE for Belumosudil
+p_AE_GGT_increased_belumosudil <- 0.002579999  # Probability of GGT increased AE for Belumosudil
+p_AE_diarrhoea_belumosudil <- 0.000  # Probability of diarrhoea AE for Belumosudil (no occurrence)
+p_AE_AE8_belumosudil <- 0.000  # Placeholder for additional AE (AE8) probability for Belumosudil
+p_AE_AE9_belumosudil <- 0.000  # Placeholder for additional AE (AE9) probability for Belumosudil
+p_AE_AE10_belumosudil <- 0.000  # Placeholder for additional AE (AE10) probability for Belumosudil
+p_AE_AE11_belumosudil <- 0.000  # Placeholder for additional AE (AE11) probability for Belumosudil
+
+# Probabilities of AEs for Best Supportive Care (BSC)
+p_AE_pneumonia_BSC <- 0.016995273  # Probability of pneumonia AE for Best Supportive Care (BSC)
+p_AE_hypertension_BSC <- 0.012491647  # Probability of hypertension AE for BSC
+p_AE_anaemia_BSC <- 0.013619484  # Probability of anaemia AE for BSC
+p_AE_thrombocytopenia_BSC <- 0.018117967  # Probability of thrombocytopenia AE for BSC
+p_AE_hyperglycaemia_BSC <- 0.0034224  # Probability of hyperglycaemia AE for BSC
+p_AE_GGT_increased_BSC <- 0.0034224  # Probability of GGT increased AE for BSC
+p_AE_diarrhoea_BSC <- 0.002282904  # Probability of diarrhoea AE for BSC
+p_AE_AE8_BSC <- 0.000  # Placeholder for additional AE (AE8) probability for BSC
+p_AE_AE9_BSC <- 0.000  # Placeholder for additional AE (AE9) probability for BSC
+p_AE_AE10_BSC <- 0.000  # Placeholder for additional AE (AE10) probability for BSC
+p_AE_AE11_BSC <- 0.000  # Placeholder for additional AE (AE11) probability for BSC
+
+# -----------------------------------------------------
+# Unit Costs for Outpatient Management of AEs
+# -----------------------------------------------------
+
+# Costs for managing AEs in outpatient setting for Belumosudil
+c_AE_pneumonia_outpatient <- 371.768  # Cost for managing pneumonia in outpatient setting for Belumosudil
+c_AE_hypertension_outpatient <- 447.730  # Cost for managing hypertension in outpatient setting for Belumosudil
+c_AE_anaemia_outpatient <- 394.642  # Cost for managing anaemia in outpatient setting for Belumosudil
+c_AE_thrombocytopenia_outpatient <- 442.712  # Cost for managing thrombocytopenia in outpatient setting for Belumosudil
+c_AE_hyperglycaemia_outpatient <- 485.777  # Cost for managing hyperglycaemia in outpatient setting for Belumosudil
+c_AE_GGT_increased_outpatient <- 485.777  # Cost for managing increased GGT levels in outpatient setting for Belumosudil
+c_AE_diarrhoea_outpatient <- 388.046  # Cost for managing diarrhoea in outpatient setting for Belumosudil
+c_AE_AE8_outpatient <- 0  # Placeholder for AE8 outpatient management cost
+c_AE_AE9_outpatient <- 0  # Placeholder for AE9 outpatient management cost
+c_AE_AE10_outpatient <- 0  # Placeholder for AE10 outpatient management cost
+c_AE_AE11_outpatient <- 0  # Placeholder for AE11 outpatient management cost
+
+# -----------------------------------------------------
+# Unit Costs for Inpatient Management of AEs
+# -----------------------------------------------------
+
+# Costs for managing AEs in inpatient setting for Belumosudil
+c_AE_pneumonia_inpatient <- 3344.581  # Cost for managing pneumonia in inpatient setting for Belumosudil
+c_AE_hypertension_inpatient <- 1478.830  # Cost for managing hypertension in inpatient setting for Belumosudil
+c_AE_anaemia_inpatient <- 1371.608  # Cost for managing anaemia in inpatient setting for Belumosudil
+c_AE_thrombocytopenia_inpatient <- 1972.554  # Cost for managing thrombocytopenia in inpatient setting for Belumosudil
+c_AE_hyperglycaemia_inpatient <- 767.985  # Cost for managing hyperglycaemia in inpatient setting for Belumosudil
+c_AE_GGT_increased_inpatient <- 767.985  # Cost for managing increased GGT levels in inpatient setting for Belumosudil
+c_AE_diarrhoea_inpatient <- 3484.009  # Cost for managing diarrhoea in inpatient setting for Belumosudil
+c_AE_AE8_inpatient <- 0  # Placeholder for AE8 inpatient management cost
+c_AE_AE9_inpatient <- 0  # Placeholder for AE9 inpatient management cost
+c_AE_AE10_inpatient <- 0  # Placeholder for AE10 inpatient management cost
+c_AE_AE11_inpatient <- 0  # Placeholder for AE11 inpatient management cost
+
+# ========================================================
+# Utility
+# ========================================================
+
+# Health Utility Method
+health_utility_method <- "SGRQ based (CLAD)"  # Health utility method used based on SGRQ for CLAD stages.
+# Options include: SGRQ based (CLAD)
+# CLAD (GOLD) stage-based COPD as proxy
+# and FEV1 based (COPD as proxy).
+
+# Health State Utility Source
+health_state_utility_source <- "Esquinas et al.(2020)"  # Source of health state utility data e.g. Esquinas et al. (2020)
+# Pickard et al. (2011) for UK and US indices.
+
+# Utility Adjustment
+include.utility.adjustment <- "Yes"  # Indicates whether to include utility adjustment.
+include_AE_disutility <- "Include"  # Indicates whether to include disutility related to adverse events (AEs).
+
+# SGRQ Scores by CLAD Stages
+SGRQ_clad0 <- 38  # SGRQ score for CLAD stage 0
+SGRQ_clad1 <- 38  # SGRQ score for CLAD stage 1
+SGRQ_clad2 <- 38  # SGRQ score for CLAD stage 2
+SGRQ_clad3 <- 63  # SGRQ score for CLAD stage 3
+SGRQ_clad4 <- 63  # SGRQ score for CLAD stage 4
+SGRQ_LTx <- 54.67  # SGRQ score for Lung Transplant (LTx)
+
+# FEV1 Baseline Utility and Disutility
+FEV1_baseline_utility <- 0.739  # Baseline utility for FEV1 in the model
+disutility_by_percent_reduction_FEV1 <- -0.0023  # Disutility for each percentage reduction in FEV1
+
+# Utility by CLAD Stage based on Esquinas et al. (2020)
+utility_clad0_stage.based_Esquinas.source <- 0.70  # Utility for CLAD stage 0
+utility_clad1_stage.based_Esquinas.source <- 0.70  # Utility for CLAD stage 1
+utility_clad2_stage.based_Esquinas.source <- 0.70  # Utility for CLAD stage 2
+utility_clad3_stage.based_Esquinas.source <- 0.66  # Utility for CLAD stage 3
+utility_clad4_stage.based_Esquinas.source <- 0.60  # Utility for CLAD stage 4
+utility_LTx_stage.based_Esquinas.source <- 0.65333  # Utility for Lung Transplant (LTx)
+
+# Utility by CLAD Stage based on Pickard et al. (UK index)
+utility_clad0_stage.based_Pickard.UK.source <- 0.73  # Utility for CLAD stage 0 (UK)
+utility_clad1_stage.based_Pickard.UK.source <- 0.59  # Utility for CLAD stage 1 (UK)
+utility_clad2_stage.based_Pickard.UK.source <- 0.59  # Utility for CLAD stage 2 (UK)
+utility_clad3_stage.based_Pickard.UK.source <- 0.63  # Utility for CLAD stage 3 (UK)
+utility_clad4_stage.based_Pickard.UK.source <- 0.63  # Utility for CLAD stage 4 (UK)
+utility_LTx_stage.based_Pickard.UK.source <- 0.61667  # Utility for Lung Transplant (LTx) (UK)
+
+# Utility by CLAD Stage based on Pickard et al. (US index)
+utility_clad0_stage.based_Pickard.US.source <- 0.80  # Utility for CLAD stage 0 (US)
+utility_clad1_stage.based_Pickard.US.source <- 0.70  # Utility for CLAD stage 1 (US)
+utility_clad2_stage.based_Pickard.US.source <- 0.70  # Utility for CLAD stage 2 (US)
+utility_clad3_stage.based_Pickard.US.source <- 0.72  # Utility for CLAD stage 3 (US)
+utility_clad4_stage.based_Pickard.US.source <- 0.72  # Utility for CLAD stage 4 (US)
+utility_LTx_stage.based_Pickard.US.source <- 0.71333  # Utility for Lung Transplant (LTx) (US)
+
+# Disutility due to Adverse Events (AEs)
+disutility_pneumonia <- -0.195  # Disutility for pneumonia
+disutility_hypertension <- -0.020  # Disutility for hypertension
+disutility_anaemia <- -0.900  # Disutility for anaemia
+disutility_thrombocytopenia <- -0.110  # Disutility for thrombocytopenia
+disutility_hyperglycaemia <- 0  # Disutility for hyperglycaemia
+disutility_GGT_increased <- 0  # Disutility for increased GGT levels
+disutility_diarrhoea <- -0.176  # Disutility for diarrhoea
+disutility_AE8 <- 0  # Placeholder for additional AE disutility
+disutility_AE9 <- 0  # Placeholder for additional AE disutility
+disutility_AE10 <- 0  # Placeholder for additional AE disutility
+disutility_AE11 <- 0  # Placeholder for additional AE disutility
+
+# Duration of Adverse Events (AEs) in Days
+duration_days_pneumonia <- 14.7  # Duration for pneumonia
+duration_days_hypertension <- 21.0  # Duration for hypertension
+duration_days_anaemia <- 23.2  # Duration for anaemia
+duration_days_thrombocytopenia <- 23.2  # Duration for thrombocytopenia
+duration_days_hyperglycaemia <- 0  # Duration for hyperglycaemia
+duration_days_GGT_increased <- 0  # Duration for increased GGT levels
+duration_days_diarrhoea <- 7  # Duration for diarrhoea
+duration_days_AE8 <- 0  # Placeholder for duration of AE8
+duration_days_AE9 <- 0  # Placeholder for duration of AE9
+duration_days_AE10 <- 0  # Placeholder for duration of AE10
+duration_days_AE11 <- 0  # Placeholder for duration of AE11
+
+# ========================================================
+# PPI
+# ========================================================
+
+percentage_receiving_ppi <- 0.7
+
+# ========================================================
+# Drug Prices
+# ========================================================
+
+# --------------------------------------------------------
+# Belumosudil
+# --------------------------------------------------------
+generic_name_belumosudil <- "Belumosudil"  # Generic name of the drug
+brand_name_belumosudil <- "REZUROCK®"  # Brand name of the drug
+dose_form_belumosudil <- "Oral"  # Dosage form (e.g. oral IV etc.)
+dose_mg_belumosudil <- 200  # Drug dose in mg
+dosing_regimen_belumosudil <- "200 mg once daily"  # Recommended dosing regimen
+strength_per_unit_belumosudil <- 200  # Strength per unit (mg per tablet or capsule)
+pack_size_belumosudil <- 30  # Number of units in a pack
+pack_price_belumosudil <- 6708  # Price per pack in £
+pas_discount_belumosudil <- 0  # PAS (Patient Access Scheme) discount in %
+absolute_reduction_belumosudil <- 0  # Absolute price reduction in £
+discount_belumosudil <- 0  # Additional discount in %
+
+# --------------------------------------------------------
+# Azithromycin
+# --------------------------------------------------------
+generic_name_azithromycin <- "Azithromycin"  # Generic name of the drug
+brand_name_azithromycin <- "NR"  # Brand name (NR indicates not reported)
+dose_form_azithromycin <- "Oral"  # Dosage form (e.g. oral)
+dose_mg_azithromycin <- 250  # Drug dose in mg
+dosing_regimen_azithromycin <- "250 mg three times a week"  # Recommended dosing regimen
+strength_per_unit_azithromycin <- 250  # Strength per unit (mg per tablet)
+pack_size_azithromycin <- 4  # Number of units in a pack
+pack_price_azithromycin <- 0.94  # Price per pack in £
+pas_discount_azithromycin <- 0  # PAS discount in %
+absolute_reduction_azithromycin <- 0  # Absolute price reduction in £
+discount_azithromycin <- 0  # Additional discount in %
+
+# --------------------------------------------------------
+# Omeprazole (PPI)
+# --------------------------------------------------------
+generic_name_omeprazole <- "Omeprazole (PPI)"  # Generic name of the drug
+brand_name_omeprazole <- "NR"  # Brand name (NR indicates not reported)
+dose_form_omeprazole <- "Oral"  # Dosage form (e.g. oral)
+dose_mg_omeprazole <- 20  # Drug dose in mg
+dosing_regimen_omeprazole <- "20 mg once daily"  # Recommended dosing regimen
+strength_per_unit_omeprazole <- 20  # Strength per unit (mg per tablet)
+pack_size_omeprazole <- 28  # Number of units in a pack
+pack_price_omeprazole <- 6.16  # Price per pack in £
+pas_discount_omeprazole <- 0  # PAS discount in %
+absolute_reduction_omeprazole <- 0  # Absolute price reduction in £
+discount_omeprazole <- 0  # Additional discount in %
+
+
+# ========================================================
+# Number of Doses per Monthly Cycle
+# ========================================================
+
+# --------------------------------------------------------
+# Belumosudil
+# --------------------------------------------------------
+number_doses_belumosudil_first_cycle <- 51.56666667   # Doses during the first cycle
+number_doses_belumosudil_cycle_2 <- 51.56666667      # Doses during the second cycle
+number_doses_belumosudil_subsequent_cycles <- 51.56666667  # Doses during subsequent cycles
+
+# --------------------------------------------------------
+# Azithromycin
+# --------------------------------------------------------
+number_doses_azithromycin_first_cycle <- 13  # Doses during the first cycle
+number_doses_azithromycin_cycle_2 <- 13      # Doses during the second cycle
+number_doses_azithromycin_subsequent_cycles <- 13  # Doses during subsequent cycles
+
+# --------------------------------------------------------
+# Omeprazole (PPI)
+# --------------------------------------------------------
+number_doses_omeprazole_first_cycle <- 30.33333333    # Doses during the first cycle
+number_doses_omeprazole_cycle_2 <- 30.33333333        # Doses during the second cycle
+number_doses_omeprazole_subsequent_cycles <- 30.33333333  # Doses during subsequent cycles
+
+
+# ========================================================
+# Disease management drug prices
+# ========================================================
+
+# --------------------------------------------------------
+# Azathioprine
+# --------------------------------------------------------
+generic_name_azathioprine <- "Azathioprine"  # Generic name of the drug
+brand_name_azathioprine <- "NR"             # Brand name (not reported here)
+dose_form_azathioprine <- "Oral"            # Form of administration
+drug_dose_mg_azathioprine <- 143.0625       # Dose in mg
+dosing_regimen_azathioprine <- "1-2.5 mg/kg daily by mouth"  # Recommended regimen
+strength_per_unit_azathioprine <- 100       # Strength per unit (mg)
+pack_size_azathioprine <- 100               # Number of units in a pack
+pack_price_azathioprine <- 43.96               # Pack price (£)
+discount_azathioprine <- 0                  # Discount percentage (%)
+
+# --------------------------------------------------------
+# MMF
+# --------------------------------------------------------
+generic_name_mmf <- "MMF"                   # Generic name of the drug
+brand_name_mmf <- "NR"                      # Brand name (not reported here)
+dose_form_mmf <- "Oral"                     # Form of administration
+drug_dose_mg_mmf <- 1000                    # Dose in mg
+dosing_regimen_mmf <- "1000 mg twice daily"  # Recommended regimen
+strength_per_unit_mmf <- 500                # Strength per unit (mg)
+pack_size_mmf <- 50                         # Number of units in a pack
+pack_price_mmf <- 6.19                      # Pack price (£)
+discount_mmf <- 0                           # Discount percentage (%)
+
+# --------------------------------------------------------
+# ECP
+# --------------------------------------------------------
+generic_name_ecp <- "ECP"                   # Generic name of the treatment
+brand_name_ecp <- "NR"                      # Brand name (not reported here)
+dose_form_ecp <- "IV"                       # Form of administration
+drug_dose_mg_ecp <- 3.2                     # Sessions per 28-day cycle
+dosing_regimen_ecp <- "3.2 sessions per 28-day cycle"  # Recommended regimen
+strength_per_unit_ecp <- 1                  # Strength per session (1 session)
+pack_size_ecp <- 1                          # Number of units in a pack
+pack_price_ecp <- 1585                      # Pack price (£)
+discount_ecp <- 0                           # Discount percentage (%)
+
+# --------------------------------------------------------
+# Prednisone
+# --------------------------------------------------------
+generic_name_prednisone <- "Prednisone"     # Generic name of the drug
+brand_name_prednisone <- "NR"               # Brand name (not reported here)
+dose_form_prednisone <- "Oral"              # Form of administration
+drug_dose_mg_prednisone <- 81.75            # Dose in mg
+dosing_regimen_prednisone <- "1 mg/kg every other day"  # Recommended regimen
+strength_per_unit_prednisone <- 25          # Strength per unit (mg)
+pack_size_prednisone <- 56                  # Number of units in a pack
+pack_price_prednisone <- 42.44                 # Pack price (£)
+discount_prednisone <- 0                    # Discount percentage (%)
+
+# --------------------------------------------------------
+# Cyclosporine
+# --------------------------------------------------------
+generic_name_cyclosporine <- "Cyclosporine"  # Generic name of the drug
+brand_name_cyclosporine <- "NR"              # Brand name (not reported here)
+dose_form_cyclosporine <- "Oral"             # Form of administration
+drug_dose_mg_cyclosporine <- 327             # Dose in mg
+dosing_regimen_cyclosporine <- "2-6 mg/kg daily by mouth as a maintenance regimen"  # Recommended regimen
+strength_per_unit_cyclosporine <- 100        # Strength per unit (mg)
+pack_size_cyclosporine <- 30                 # Number of units in a pack
+pack_price_cyclosporine <- 41.59                # Pack price (£)
+discount_cyclosporine <- 0                   # Discount percentage (%)
+
+# --------------------------------------------------------
+# Tacrolimus
+# --------------------------------------------------------
+generic_name_tacrolimus <- "Tacrolimus"      # Generic name of the drug
+brand_name_tacrolimus <- "NR"                # Brand name (not reported here)
+dose_form_tacrolimus <- "Oral"               # Form of administration
+drug_dose_mg_tacrolimus <- 1                 # Dose in mg
+dosing_regimen_tacrolimus <- "1 mg twice daily"  # Recommended regimen
+strength_per_unit_tacrolimus <- 1            # Strength per unit (mg)
+pack_size_tacrolimus <- 30                   # Number of units in a pack
+pack_price_tacrolimus <- 59.1                  # Pack price (£)
+discount_tacrolimus <- 0                     # Discount percentage (%)
+
+
+# ========================================================
+# Number of Doses per Monthly Cycle
+# ========================================================
+
+# --------------------------------------------------------
+# CLAD 0-2 Data
+# --------------------------------------------------------
+
+# Azathioprine
+clad_0_2_azathioprine <- 6.6733  # Number of doses for CLAD 0-2
+
+# MMF
+clad_0_2_mmf <- 13.3467  # Number of doses for CLAD 0-2
+
+# ECP
+clad_0_2_ecp <- 0.0433  # Number of doses for CLAD 0-2
+
+# Prednisone
+clad_0_2_prednisone <- 6.825  # Number of doses for CLAD 0-2
+
+# Cyclosporine
+clad_0_2_cyclosporine <- 33.9733  # Number of doses for CLAD 0-2
+
+# Tacrolimus
+clad_0_2_tacrolimus <- 67.9467  # Number of doses for CLAD 0-2
+
+# --------------------------------------------------------
+# CLAD 3 Data
+# --------------------------------------------------------
+
+# Azathioprine
+clad_3_azathioprine <- 7.8867  # Number of doses for CLAD 3
+
+# MMF
+clad_3_mmf <- 15.773  # Number of doses for CLAD 3
+
+# ECP
+clad_3_ecp <- 0.0325  # Number of doses for CLAD 3
+
+# Prednisone
+clad_3_prednisone <- 11.83  # Number of doses for CLAD 3
+
+# Cyclosporine
+clad_3_cyclosporine <- 37.0067  # Number of doses for CLAD 3
+
+# Tacrolimus
+clad_3_tacrolimus <- 74.0133  # Number of doses for CLAD 3
+
+# --------------------------------------------------------
+# CLAD 4 Data
+# --------------------------------------------------------
+
+# Azathioprine
+clad_4_azathioprine <- 5.915  # Number of doses for CLAD 4
+
+# MMF
+clad_4_mmf <- 11.83  # Number of doses for CLAD 4
+
+# ECP
+clad_4_ecp <- 0.0867  # Number of doses for CLAD 4
+
+# Prednisone
+clad_4_prednisone <- 8.3417  # Number of doses for CLAD 4
+
+# Cyclosporine
+clad_4_cyclosporine <- 31.85  # Number of doses for CLAD 4
+
+# Tacrolimus
+clad_4_tacrolimus <- 63.7  # Number of doses for CLAD 4
+
+# ========================================================
+# Administration Costs
+# ========================================================
+
+unit.cost_admin_ECP <- 124.155
+unit.cost_admin_oral <- 0
+
+
+# ========================================================
+# Health State Costs
+# ========================================================
+
+# --------------------------------------------------------
+# Unit Cost per Resource
+# --------------------------------------------------------
+
+unit.cost_ICU_visits <- 1824.6892
+unit.cost_non_ICU_visits <- 1328.6730
+unit.cost_AE_visits <- 277.2413
+unit.cost_GP_visits <- 59.9368
+unit.cost_outpatient_hospital <- 126.0945
+unit.cost_lab_services <- 3.4736
+unit.cost_other_outpatient_visits <- 126.0945
+unit.cost_HCRU_8 <- 0.0000
+unit.cost_HCRU_9 <- 0.0000
+
+# --------------------------------------------------------
+# Resource Use per Patient per Month - CLAD 0-2
+# --------------------------------------------------------
+
+resource.use_clad_0_2_ICU_visits_belumosudil <- 0
+resource.use_clad_0_2_ICU_visits_BSC <- 0
+
+resource.use_clad_0_2_non_ICU_visits_belumosudil <- 0.15
+resource.use_clad_0_2_non_ICU_visits_BSC <- 0.15
+
+resource.use_clad_0_2_AE_visits_belumosudil <- 0.03
+resource.use_clad_0_2_AE_visits_BSC <- 0.03
+
+resource.use_clad_0_2_GP_visits_belumosudil <- 1.52
+resource.use_clad_0_2_GP_visits_BSC <- 1.52
+
+resource.use_clad_0_2_outpatient_hospital_belumosudil <- 0.86
+resource.use_clad_0_2_outpatient_hospital_BSC <- 0.86
+
+resource.use_clad_0_2_lab_services_belumosudil <- 1.49
+resource.use_clad_0_2_lab_services_BSC <- 1.49
+
+resource.use_clad_0_2_other_outpatient_visits_belumosudil <- 0.87
+resource.use_clad_0_2_other_outpatient_visits_BSC <- 0.87
+
+resource.use_clad_0_2_HCRU_8_belumosudil <- 0
+resource.use_clad_0_2_HCRU_8_BSC <- 0
+
+resource.use_clad_0_2_HCRU_9_belumosudil <- 0
+resource.use_clad_0_2_HCRU_9_BSC <- 0
+
+# --------------------------------------------------------
+# Resource Use per Patient per Month - CLAD 3
+# --------------------------------------------------------
+
+resource.use_clad_3_ICU_visits_belumosudil <- 0
+resource.use_clad_3_ICU_visits_BSC <- 0
+
+resource.use_clad_3_non_ICU_visits_belumosudil <- 0.15
+resource.use_clad_3_non_ICU_visits_BSC <- 0.15
+
+resource.use_clad_3_AE_visits_belumosudil <- 0.09
+resource.use_clad_3_AE_visits_BSC <- 0.09
+
+resource.use_clad_3_GP_visits_belumosudil <- 2.32
+resource.use_clad_3_GP_visits_BSC <- 2.32
+
+resource.use_clad_3_outpatient_hospital_belumosudil <- 1.61
+resource.use_clad_3_outpatient_hospital_BSC <- 1.61
+
+resource.use_clad_3_lab_services_belumosudil <- 2.16
+resource.use_clad_3_lab_services_BSC <- 2.16
+
+resource.use_clad_3_other_outpatient_visits_belumosudil <- 1.34
+resource.use_clad_3_other_outpatient_visits_BSC <- 1.34
+
+resource.use_clad_3_HCRU_8_belumosudil <- 0
+resource.use_clad_3_HCRU_8_BSC <- 0
+
+resource.use_clad_3_HCRU_9_belumosudil <- 0
+resource.use_clad_3_HCRU_9_BSC <- 0
+
+# --------------------------------------------------------
+# Resource Use per Patient per Month - CLAD 4
+# --------------------------------------------------------
+
+resource.use_clad_4_ICU_visits_belumosudil <- 0.14
+resource.use_clad_4_ICU_visits_BSC <- 0.14
+
+resource.use_clad_4_non_ICU_visits_belumosudil <- 0.13
+resource.use_clad_4_non_ICU_visits_BSC <- 0.13
+
+resource.use_clad_4_AE_visits_belumosudil <- 0.14
+resource.use_clad_4_AE_visits_BSC <- 0.14
+
+resource.use_clad_4_GP_visits_belumosudil <- 3.19
+resource.use_clad_4_GP_visits_BSC <- 3.19
+
+resource.use_clad_4_outpatient_hospital_belumosudil <- 1.6
+resource.use_clad_4_outpatient_hospital_BSC <- 1.6
+
+resource.use_clad_4_lab_services_belumosudil <- 2.71
+resource.use_clad_4_lab_services_BSC <- 2.71
+
+resource.use_clad_4_other_outpatient_visits_belumosudil <- 1.66
+resource.use_clad_4_other_outpatient_visits_BSC <- 1.66
+
+resource.use_clad_4_HCRU_8_belumosudil <- 0
+resource.use_clad_4_HCRU_8_BSC <- 0
+
+resource.use_clad_4_HCRU_9_belumosudil <- 0
+resource.use_clad_4_HCRU_9_BSC <- 0
+
+# --------------------------------------------------------
+# Health State Costs - source : Sheshadri et al. (2021)
+# --------------------------------------------------------
+
+health.state.cost_source <- "No"
+
+health.state.cost_sheshadri.source_clad0_belumosudil <- 419.789
+health.state.cost_sheshadri.source_clad1_belumosudil <- 419.789
+health.state.cost_sheshadri.source_clad2_belumosudil <- 818.361
+health.state.cost_sheshadri.source_clad3_belumosudil <- 1306.346
+health.state.cost_sheshadri.source_clad4_belumosudil <- 3820.533
+
+health.state.cost_sheshadri.source_clad0_BSC <- 419.789
+health.state.cost_sheshadri.source_clad1_BSC <- 419.789
+health.state.cost_sheshadri.source_clad2_BSC <- 818.361
+health.state.cost_sheshadri.source_clad3_BSC <- 1306.346
+health.state.cost_sheshadri.source_clad4_BSC <- 3820.533
+
+# ========================================================
+# Percentage Reduction in Health State Costs over Time
+# ========================================================
+
+percentage_reduction_health.state.cost_per.stage <- "Include"
+
+reduction_health.state.cost_clad0 <- 0
+reduction_health.state.cost_clad1 <- 0.22524
+reduction_health.state.cost_clad2 <- 0.22524
+reduction_health.state.cost_clad3 <- 0.22524
+reduction_health.state.cost_clad4 <- 0.22524
+reduction_health.state.cost_LTx <- 0.22524
+
+# ========================================================
+# Lung Re_Transplantation Costs
+# ========================================================
+
+one.off_cost_LTx <- 80428.14
+
+###########################################################
+###########################################################
+###########################################################
+###########################################################
+
   
   # -----------------------------------------------------
   # Function Definition
@@ -1831,13 +1338,13 @@ clad_model <- function(
     as.vector(na.omit((1 - df_survivaldata$S.t_clad4.belumosudil / lag(df_survivaldata$S.t_clad4.belumosudil))[1:(length(which(df_FEV1trajectory$CLAD.stage.belumosudil == 4)) + 1)]))
   
   # Assign a mortality probability of 1 to patients aged 100 or more
-  df_survivaldata$p_cycle_mortality_belumosudil[which(df_survivaldata$Age >= 100)] <- 1
+  df_survivaldata$p_cycle_mortality_belumosudil[which(df_survivaldata$Age >= 101)] <- 1
   
+  df_survivaldata$p_cycle_mortality_belumosudil <- pmax(df_survivaldata$p_cycle_mortality_belumosudil, general_mortality$Cycle.based)
   # Set the first cycle's mortality probability to 0 (baseline)
   df_survivaldata$p_cycle_mortality_belumosudil[1] <- 0
   
-  df_survivaldata$p_cycle_mortality_belumosudil <- pmax(df_survivaldata$p_cycle_mortality_belumosudil, general_mortality$Cycle.based)
-  
+
   
   
   # Initialize a new column for BSC cycle-specific mortality probabilities in df_survivaldata
@@ -1861,13 +1368,14 @@ clad_model <- function(
     as.vector(na.omit((1 - (df_survivaldata$S.t_clad4.BSC / lag(df_survivaldata$S.t_clad4.BSC)))[1:(length(which(df_FEV1trajectory$CLAD.stage.BSC == 4)) + 1)]))
   
   # Assign a mortality probability of 1 to patients aged 100 or more
-  df_survivaldata$p_cycle_mortality_BSC[which(df_survivaldata$Age >= 100)] <- 1
+  df_survivaldata$p_cycle_mortality_BSC[which(df_survivaldata$Age >= 101)] <- 1
+  
+  df_survivaldata$p_cycle_mortality_BSC <- pmax(df_survivaldata$p_cycle_mortality_BSC, general_mortality$Cycle.based)
   
   # Set the first cycle's mortality probability to 0 (baseline)
   df_survivaldata$p_cycle_mortality_BSC[1] <- 0
   
-  df_survivaldata$p_cycle_mortality_BSC <- pmax(df_survivaldata$p_cycle_mortality_BSC, general_mortality$Cycle.based)
-  
+
   
   
   
@@ -1964,7 +1472,7 @@ clad_model <- function(
     # Transition probabilities for Belumosudil.arm.newly.LTx
     df_FEV1trajectory$Belumosudil.arm.newly.LTx[i] <- df_FEV1trajectory$Belumosudil.arm.1L[i-1]*
       (1 - df_survivaldata$p_cycle_mortality_belumosudil[i] ) *
-      df_FEV1trajectory$probability_LTx_belumosudil +
+      df_FEV1trajectory$probability_LTx_belumosudil[i] +
       df_FEV1trajectory$Belumosudil.arm.2L.BSC[i-1]*
       (1 - df_survivaldata$p_cycle_mortality_BSC[i]) * 
       df_FEV1trajectory$probability_LTx_BSC[i]
@@ -2686,7 +2194,7 @@ clad_model <- function(
   calculate_disease_management_cycle <- function(
     azathioprine, price_mg_ml_azathioprine, drug_dose_mg_azathioprine,
     mmf, price_mg_ml_mmf, drug_dose_mg_mmf,
-    ecp, price_mg_ml_ecp, drug_dose_mg_ecp, unit.cost_admin_ECP = 0,
+    ecp, price_mg_ml_ecp, drug_dose_mg_ecp, unit.cost_admin_ECP,
     prednisone, price_mg_ml_prednisone, drug_dose_mg_prednisone,
     cyclosporine, price_mg_ml_cyclosporine, drug_dose_mg_cyclosporine,
     tacrolimus, price_mg_ml_tacrolimus, drug_dose_mg_tacrolimus
@@ -3243,7 +2751,7 @@ clad_model <- function(
   return(df_deterministic_results)
   
   
-}
+
 
 
 
