@@ -631,6 +631,12 @@ reduction_health.state.cost_LTx <- 0.22524
 
 one.off_cost_LTx <- 80428.14
 
+# ========================================================
+# External Files
+# ========================================================
+survival_coeff_clad <- read_excel("~/survival_coeff_clad.xlsx")
+general_p_mortality <- read_excel("~/general_p_mortality.xlsx")
+general_pop_utility <- read_excel("~/general_pop_utility.xlsx")
 ###########################################################
 ###########################################################
 ###########################################################
@@ -734,7 +740,7 @@ one.off_cost_LTx <- 80428.14
   # Read survival coefficients from an Excel file
   # This file contains the parameters required to define survival functions
   # based on different distributions (Log-normal, Exponential, Weibull, etc.).
-  survival_coeff_clad <- read_excel("~/survival_coeff_clad.xlsx")
+  
   
   # Define survival distributions based on the specified type in survival_function
   if (survival_function == "Log-normal") {
@@ -1305,9 +1311,7 @@ one.off_cost_LTx <- 80428.14
   ###########################################################################################
   
   # Load general mortality data from an Excel file
-  
-  general_p_mortality <- read_excel("~/general_p_mortality.xlsx")  
-  
+
   
   general_p_mortality <- general_p_mortality %>% 
     mutate(mx.Overall = mx.Males*(1-female_percentage)+mx.Females*female_percentage
@@ -1692,8 +1696,7 @@ one.off_cost_LTx <- 80428.14
   # Utility adjustment
   # -----------------------------------------------------
   
-  general_pop_utility <- read_excel("~/general_pop_utility.xlsx")
-  
+
   general_pop_utility <- general_pop_utility %>% 
     mutate(
       General = female_percentage*Females + (1 - female_percentage)*Males
