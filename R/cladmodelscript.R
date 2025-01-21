@@ -17,7 +17,7 @@ wtp_threshold <- 30000       # Willingness-to-pay threshold (in monetary units)
 # Patient Population Characteristics
 # ========================================================
 mean_age <- 56                # Average age of the patient population
-female_percentage <- 0.43    # Proportion of female patients
+female_percentage <- 0.431818    # Proportion of female patients
 mean_weight <- 82             # Average weight of the patient population (in kg)
 
 # ========================================================
@@ -414,32 +414,32 @@ discount_tacrolimus <- 0                     # Discount percentage (%)
 # --------------------------------------------------------
 
 # Azathioprine
-clad_0_2_azathioprine <- 6.6733  # Number of doses for CLAD 0-2
+clad_0_2_azathioprine <- 6.6733333333  # Number of doses for CLAD 0-2
 
 # MMF
-clad_0_2_mmf <- 13.3467  # Number of doses for CLAD 0-2
+clad_0_2_mmf <- 13.346666666667  # Number of doses for CLAD 0-2
 
 # ECP
-clad_0_2_ecp <- 0.0433  # Number of doses for CLAD 0-2
+clad_0_2_ecp <- 0.043333333  # Number of doses for CLAD 0-2
 
 # Prednisone
 clad_0_2_prednisone <- 6.825  # Number of doses for CLAD 0-2
 
 # Cyclosporine
-clad_0_2_cyclosporine <- 33.9733  # Number of doses for CLAD 0-2
+clad_0_2_cyclosporine <- 33.97333333333  # Number of doses for CLAD 0-2
 
 # Tacrolimus
-clad_0_2_tacrolimus <- 67.9467  # Number of doses for CLAD 0-2
+clad_0_2_tacrolimus <- 67.94666666667  # Number of doses for CLAD 0-2
 
 # --------------------------------------------------------
 # CLAD 3 Data
 # --------------------------------------------------------
 
 # Azathioprine
-clad_3_azathioprine <- 7.8867  # Number of doses for CLAD 3
+clad_3_azathioprine <- 7.8866666667  # Number of doses for CLAD 3
 
 # MMF
-clad_3_mmf <- 15.773  # Number of doses for CLAD 3
+clad_3_mmf <- 15.77333333  # Number of doses for CLAD 3
 
 # ECP
 clad_3_ecp <- 0.0325  # Number of doses for CLAD 3
@@ -448,10 +448,10 @@ clad_3_ecp <- 0.0325  # Number of doses for CLAD 3
 clad_3_prednisone <- 11.83  # Number of doses for CLAD 3
 
 # Cyclosporine
-clad_3_cyclosporine <- 37.0067  # Number of doses for CLAD 3
+clad_3_cyclosporine <- 37.006666667  # Number of doses for CLAD 3
 
 # Tacrolimus
-clad_3_tacrolimus <- 74.0133  # Number of doses for CLAD 3
+clad_3_tacrolimus <- 74.0133333333  # Number of doses for CLAD 3
 
 # --------------------------------------------------------
 # CLAD 4 Data
@@ -464,10 +464,10 @@ clad_4_azathioprine <- 5.915  # Number of doses for CLAD 4
 clad_4_mmf <- 11.83  # Number of doses for CLAD 4
 
 # ECP
-clad_4_ecp <- 0.0867  # Number of doses for CLAD 4
+clad_4_ecp <- 0.0866666667  # Number of doses for CLAD 4
 
 # Prednisone
-clad_4_prednisone <- 8.3417  # Number of doses for CLAD 4
+clad_4_prednisone <- 8.34166666667  # Number of doses for CLAD 4
 
 # Cyclosporine
 clad_4_cyclosporine <- 31.85  # Number of doses for CLAD 4
@@ -479,7 +479,7 @@ clad_4_tacrolimus <- 63.7  # Number of doses for CLAD 4
 # Administration Costs
 # ========================================================
 
-unit.cost_admin_ECP <- 124.155
+unit.cost_admin_ECP <- 124.1548
 unit.cost_admin_oral <- 0
 
 
@@ -491,13 +491,13 @@ unit.cost_admin_oral <- 0
 # Unit Cost per Resource
 # --------------------------------------------------------
 
-unit.cost_ICU_visits <- 1824.6892
-unit.cost_non_ICU_visits <- 1328.6730
-unit.cost_AE_visits <- 277.2413
+unit.cost_ICU_visits <- 1824.689185
+unit.cost_non_ICU_visits <- 1328.673001
+unit.cost_AE_visits <- 277.2412599
 unit.cost_GP_visits <- 59.9368
-unit.cost_outpatient_hospital <- 126.0945
-unit.cost_lab_services <- 3.4736
-unit.cost_other_outpatient_visits <- 126.0945
+unit.cost_outpatient_hospital <- 126.0945305
+unit.cost_lab_services <- 3.473605008
+unit.cost_other_outpatient_visits <- 126.0945305
 unit.cost_HCRU_8 <- 0.0000
 unit.cost_HCRU_9 <- 0.0000
 
@@ -1305,17 +1305,29 @@ one.off_cost_LTx <- 80428.14
   ###########################################################################################
   
   # Load general mortality data from an Excel file
-  general_mortality <- read_excel("~/general_mortality.xlsx")
   
-  # Filter the dataset to include only rows where Age is greater than (mean_age - 1)
-  general_mortality <- general_mortality %>% 
-    filter(Age > mean_age - 1)
+  general_p_mortality <- read_excel("~/general_p_mortality.xlsx")  
   
   
+  general_p_mortality <- general_p_mortality %>% 
+    mutate(mx.Overall = mx.Males*(1-female_percentage)+mx.Females*female_percentage
+                                  ) %>% 
+    mutate(Mortality.rate.cycle.based = -log(1-mx.Overall)/(1/df_survivaldata$Year[2])) %>% 
+    mutate(mx.Cycle.based = 1-exp(-Mortality.rate.cycle.based))
   
-  general_pop_mortality <- read_excel("~/general_pop_mortality.xlsx")
   
+  cycle.based.mx <- rep(NA, nrow(df_survivaldata))
   
+  cycle.based.mx <- general_p_mortality$mx.Cycle.based[
+    match(floor(df_survivaldata$Age), general_p_mortality$Age)
+  ]
+  cycle.based.mx <- replace(cycle.based.mx, is.na(cycle.based.mx), 1)
+  
+  general_mortality <- data.frame(
+    Age = df_survivaldata$Age,
+    Cycle.based = cycle.based.mx
+  )
+
   
   # Initialize a new column for belumosudil cycle-specific mortality probabilities in df_survivaldata
   df_survivaldata$p_cycle_mortality_belumosudil <- rep(NA, nrow(df_survivaldata))
@@ -2253,9 +2265,9 @@ one.off_cost_LTx <- 80428.14
   
   # Disease management costs for CLAD 4
   disease_management_cycle_clad4 <- calculate_disease_management_cycle(
-    factors = c(clad_4_azathioprine, clad_4_mmf, clad_4_ecp, clad_4_prednisone, clad_4_cyclosporine, clad_4_tacrolimus),
+    factors = c(clad_4_azathioprine, clad_4_mmf, clad_4_ecp,clad_4_prednisone, clad_4_cyclosporine, clad_4_tacrolimus),
     prices = c(price_mg_ml_azathioprine, price_mg_ml_mmf, price_mg_ml_ecp, price_mg_ml_prednisone, price_mg_ml_cyclosporine, price_mg_ml_tacrolimus),
-    doses = c(drug_dose_mg_azathioprine, drug_dose_mg_mmf, drug_dose_mg_ecp, drug_dose_mg_prednisone, drug_dose_mg_cyclosporine, drug_dose_mg_tacrolimus),
+    doses = c(drug_dose_mg_azathioprine, drug_dose_mg_mmf, drug_dose_mg_ecp,drug_dose_mg_prednisone, drug_dose_mg_cyclosporine, drug_dose_mg_tacrolimus),
     admin_factor = clad_4_ecp,  # Proportion of patients receiving ECP
     admin_cost = unit.cost_admin_ECP # Cost per unit administration of ECP
   )
@@ -2748,8 +2760,44 @@ one.off_cost_LTx <- 80428.14
     
   )
   
-  return(df_deterministic_results)
+
   
+  df_detailed_results <- data.frame(
+    
+    Variable = c("TOTAL COST", "Total Health State Cost", 
+                 "Health State Cost CLAD 1","Health State Cost CLAD 2","Health State Cost CLAD 3", "Health State Cost CLAD 4", "Re-LTx",
+                 "Total Treatment Cost",
+                 "1L Drug Costs", "2L Drug Costs", "Re-LTx Costs",
+                 "Adverse Event Costs"),
+    
+    Belumosudil = c(df_deterministic_results$Total.Cost[1], sum(df_payoffs_undiscounted_belumosudil$Total.Health.State.Cost),
+                    sum(df_payoffs_undiscounted_belumosudil$Health.State.Costs.CLAD1),
+                    sum(df_payoffs_undiscounted_belumosudil$Health.State.Costs.CLAD2),
+                    sum(df_payoffs_undiscounted_belumosudil$Health.State.Costs.CLAD3),
+                    sum(df_payoffs_undiscounted_belumosudil$Health.State.Costs.CLAD4),
+                    sum(df_payoffs_undiscounted_belumosudil$Health.State.Costs.Re.LTx),
+                    sum(df_payoffs_undiscounted_belumosudil$Total.Drug.Costs),
+                    sum(df_payoffs_undiscounted_belumosudil$Drug.Costs.1L),
+                    sum(df_payoffs_undiscounted_belumosudil$Drug.Costs.2L),
+                    sum(belumosudil.LTx.drug.costs),
+                    sum(df_payoffs_undiscounted_belumosudil$AE.Costs)
+                    
+                    ),
+    
+    BSC = c(df_deterministic_results$Total.Cost[2], sum(df_payoffs_undiscounted_BSC$Total.Health.State.Cost),
+                    sum(df_payoffs_undiscounted_BSC$Health.State.Costs.CLAD1),
+                    sum(df_payoffs_undiscounted_BSC$Health.State.Costs.CLAD2),
+                    sum(df_payoffs_undiscounted_BSC$Health.State.Costs.CLAD3),
+                    sum(df_payoffs_undiscounted_BSC$Health.State.Costs.CLAD4),
+                    sum(df_payoffs_undiscounted_BSC$Health.State.Costs.Re.LTx),
+                    sum(df_payoffs_undiscounted_BSC$Total.Drug.Costs),
+                    sum(df_payoffs_undiscounted_BSC$Total.Drug.Costs)-sum(BSC.LTx.drug.costs),
+                    0,
+                    sum(BSC.LTx.drug.costs),
+                    sum(df_payoffs_undiscounted_BSC$AE.Costs)
+                    
+    )
+  )
   
 
 
